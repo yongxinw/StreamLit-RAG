@@ -11,7 +11,7 @@ from llama_index.llms import OpenAI
 from llama_index.tools import BaseTool, FunctionTool, QueryEngineTool, ToolMetadata
 from llama_index.prompts import PromptTemplate
 
-agent_template_str = '\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n## Tools\nYou have access to a wide variety of tools. You are responsible for using\nthe tools in any sequence you deem appropriate to complete the task at hand.\nThis may require breaking the task into subtasks and using different tools\nto complete each subtask.\n\nYou have access to the following tools:\n{tool_desc}\n\n## Output Format\nTo answer the question, please use the following format.\n\n```\nThought: I need to use a tool to help me answer the question.\nAction: tool name (one of {tool_names}) if using a tool.\nAction Input: the input to the tool, in a JSON format representing the kwargs (e.g. {{"input": "hello world", "num_beams": 5}})\n```\n\nPlease ALWAYS start with a Thought.\n\nPlease use a valid JSON format for the Action Input. Do NOT do this {{\'input\': \'hello world\', \'num_beams\': 5}}.\n\nIf this format is used, the user will respond in the following format:\n\n```\nObservation: tool response\n```\n\nYou should keep repeating the above format until you have enough information\nto answer the question without using any more tools. At that point, you MUST respond\nin the one of the following two formats:\n\n```\nThought: I can answer without using any more tools.\nAnswer: [your answer here]\n```\n\n```\nThought: I cannot answer the question with the provided tools.\nAnswer: Sorry, I cannot answer your query.\n```\n\n ALWAYS check user role from chat history before any actions. When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly. When user has provided role information, you can proceed with the answering questions. \n\n## Current Conversation\nBelow is the current conversation consisting of interleaving human and assistant messages.\n\n'
+agent_template_str = '\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n## Tools\nYou have access to a wide variety of tools. You are responsible for using\nthe tools in any sequence you deem appropriate to complete the task at hand.\nThis may require breaking the task into subtasks and using different tools\nto complete each subtask.\n\nYou have access to the following tools:\n{tool_desc}\n\n## Output Format\nTo answer the question, please use the following format.\n\n```\nThought: I need to use a tool to help me answer the question.\nAction: tool name (one of {tool_names}) if using a tool.\nAction Input: the input to the tool, in a JSON format representing the kwargs (e.g. {{"input": "hello world", "num_beams": 5}})\n```\n\nPlease ALWAYS start with a Thought.\n\nPlease use a valid JSON format for the Action Input. Do NOT do this {{\'input\': \'hello world\', \'num_beams\': 5}}.\n\nIf this format is used, the user will respond in the following format:\n\n```\nObservation: tool response\n```\n\nYou should keep repeating the above format until you have enough information\nto answer the question without using any more tools. At that point, you MUST respond\nin the one of the following two formats:\n\n```\nThought: I can answer without using any more tools.\nAnswer: [your answer here]\n```\n\n```\nThought: I cannot answer the question with the provided tools.\nAnswer: Sorry, I cannot answer your query.\n```\n\n ALWAYS check user role from chat history before any actions. When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly. When user has provided role information, use the correct tool to update user role and proceed with the answering questions. \n\n## Current Conversation\nBelow is the current conversation consisting of interleaving human and assistant messages.\n\n'
 policy_engine_tmpl_str = (
     "注意：回答问题前，请先从用户对话中尝试确定用户角色，若无法推测，则询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
     # "注意：若用户角色为未知，请先询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
@@ -23,6 +23,16 @@ policy_engine_tmpl_str = (
     "请根据语境信息，不要使用先验知识，回答下面的问题。\n"
     "Query: {query_str}\n"
     "Answer: "
+)
+policy_engine_refine_tmpl_str = (
+    "以下是原始查询：{query_str}\n"
+    "我们已经提供了一个现有的答案：{existing_answer}\n"
+    "我们有机会通过下面的一些更多上下文来改进现有的答案（仅在需要时）。\n"
+    "------------\n"
+    "{context_msg}"
+    "------------\n"
+    "根据新的上下文，改进原始答案以更好地回答查询。如果上下文没有用，返回原始答案。\n"
+    "Refined Answer:"
 )
 
 
@@ -36,10 +46,10 @@ def display_prompt_dict(prompts_dict):
 openai.api_key = st.secrets.openai_key
 
 llm = OpenAI(
-    # model="gpt-4-turbo-preview",
+    model="gpt-4-turbo-preview",
     # model="gpt-3.5-turbo-0613",
     # model="gpt-4-0613",
-    model="gpt-4-0125-preview",
+    # model="gpt-4-0125-preview",
     temperature=0.4,
     system_prompt="你是一个关于大众云学的专家，你了解关于大众云学的所有问题。用户角色未知时，请先询问角色。假设所有的问题都与大众云学有关。保持你的答案技术性和基于事实——不要产生幻觉。",
 )
@@ -68,14 +78,14 @@ def update_user_role(input: str = "123"):
     # TODO: This is a hacky fix. A better solution: https://stackoverflow.com/questions/11283961/partial-string-formatting
     USER_ROLE = input
     policy_engine_tmpl_str = (
-        "注意：若用户角色为未知，请先询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
+        "注意：回答问题前，请先从用户对话中尝试确定用户角色，若无法推测，则询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
+        #  "注意：若用户角色为未知，请先询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
         "注意：用户角色为{user_role}\n"
         "语境信息如下\n"
         "---------------------\n"
         "{context_str}\n"
         "---------------------\n"
         "请根据语境信息，不要使用先验知识，回答下面的问题。\n"
-        # "answer the query in the style of a Shakespeare play.\n"
         "Query: {query_str}\n"
         "Answer: "
     )
@@ -103,12 +113,16 @@ update_user_role_tool = FunctionTool.from_defaults(
 )
 
 policy_engine_tmpl = PromptTemplate(policy_engine_tmpl_str)
+policy_enging_refine_tmpl = PromptTemplate(policy_engine_refine_tmpl_str)
 policy_engine = index.as_query_engine(
     similarity_top_k=5,
     verbose=True,
 )
 policy_engine.update_prompts(
     {"response_synthesizer:text_qa_template": policy_engine_tmpl}
+)
+policy_engine.update_prompts(
+    {"response_synthesizer:refine_template": policy_enging_refine_tmpl}
 )
 policy_query_tool = QueryEngineTool(
     query_engine=policy_engine,
@@ -120,7 +134,7 @@ policy_query_tool = QueryEngineTool(
 
 tools = [
     policy_query_tool,
-    multiply_tool,
+    # multiply_tool,
     update_user_role_tool,
 ]
 
