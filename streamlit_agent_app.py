@@ -10,6 +10,11 @@ from llama_index.agent import ReActAgent
 from llama_index.llms import OpenAI
 from llama_index.tools import BaseTool, FunctionTool, QueryEngineTool, ToolMetadata
 
+def display_prompt_dict(prompts_dict):
+    for k, p in prompts_dict.items():
+        text_md = f"**Prompt Key**: {k}\n" f"**Text:** \n"
+        print(text_md)
+        print(p.get_template())
 
 st.set_page_config(page_title="Chat with the Streamlit docs, powered by LlamaIndex", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
 openai.api_key = st.secrets.openai_key
@@ -76,7 +81,12 @@ tools = [
 ]
 
 agent = ReActAgent.from_tools(tools=tools, llm=llm, verbose=True)
+print(agent.default_tool_choice)
+prompt_dict = agent.get_prompts()
+display_prompt_dict(prompt_dict)
+import ipdb
 
+ipdb.set_trace()
 # response = agent.chat("你好，我想知道大众云学的使用条款及方法。")
 # response = agent.chat("155乘以203等于多少")
 # print(str(response))
@@ -91,6 +101,9 @@ if prompt := st.chat_input(
     "Your question"
 ):  # Prompt for user input and save to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
+    # st.session_state.chat_engine.memory.add_message(
+    #     {"role": "user", "content": prompt}
+    # )
 
 for message in st.session_state.messages:  # Display the prior chat messages
     with st.chat_message(message["role"]):
@@ -103,4 +116,5 @@ if st.session_state.messages[-1]["role"] != "assistant":
             response = st.session_state.chat_engine.chat(prompt)
             st.write(response.response)
             message = {"role": "assistant", "content": response.response}
+            # st.session_state.chat_engine.memory.add_message(message)
             st.session_state.messages.append(message)  # Add response to message history
