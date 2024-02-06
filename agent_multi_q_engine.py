@@ -36,33 +36,13 @@ agent_template_str = (
     'Thought: I cannot answer the question with the provided tools.\n'
     'Answer: Sorry, I cannot answer your query.\n```\n\n'
     'ALWAYS check user role from chat history before any actions.\n'
-    'When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly.'
+    'When user role is unknown, you MUST use the registration_engine to fetch available roles and ask the user for his role based on registration_engine output\n'
+    'You MUST NOT use any tools to infer user role or ask directly.\n'
     'When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n'
     'Current user role is unknown\n\n'
+    'All conversation is in Chinese. Please use Chinese for all conversation.\n\n'
     '## Current Conversation\n'
     'Below is the current conversation consisting of interleaving human and assistant messages.\n\n'
-)
-policy_engine_tmpl_str = (
-    "注意：回答问题前，请先从用户对话中尝试确定用户角色，若无法推测，则询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
-    # "注意：若用户角色为未知，请先询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
-    "注意：用户角色为未知\n"
-    "语境信息如下\n"
-    "---------------------\n"
-    "{context_str}\n"
-    "---------------------\n"
-    "请根据语境信息，不要使用先验知识，回答下面的问题。\n"
-    "Query: {query_str}\n"
-    "Answer: "
-)
-policy_engine_refine_tmpl_str = (
-    "以下是原始查询：{query_str}\n"
-    "我们已经提供了一个现有的答案：{existing_answer}\n"
-    "我们有机会通过下面的一些更多上下文来改进现有的答案（仅在需要时）。\n"
-    "------------\n"
-    "{context_msg}"
-    "------------\n"
-    "根据新的上下文，改进原始答案以更好地回答查询。如果上下文没有用，返回原始答案。\n"
-    "Refined Answer:"
 )
 
 
@@ -85,15 +65,12 @@ llm = OpenAI(
 )
 
 
-def load_data():
-    reader = SimpleDirectoryReader(input_dir="./policies", recursive=True)
+def load_data(input_dir=None, input_files=None, recursive=True):
+    reader = SimpleDirectoryReader(input_dir=input_dir, input_files=input_files, recursive=True)
     docs = reader.load_data()
     service_context = ServiceContext.from_defaults(llm=llm)
     index = VectorStoreIndex.from_documents(docs, service_context=service_context)
     return index
-
-
-index = load_data()
 
 
 def multiply(a: int, b: int) -> int:
@@ -152,7 +129,8 @@ def update_user_role(input: str = "123"):
         'Thought: I cannot answer the question with the provided tools.\n'
         'Answer: Sorry, I cannot answer your query.\n```\n\n'
         'ALWAYS check user role from chat history before any actions.\n'
-        'When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly.'
+        'When user role is unknown, you MUST use the registration_engine to fetch available roles and ask the user for his role based on registration_engine output\n'
+        'You MUST NOT use any tools to infer user role or ask directly.\n'
         'When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n'
         'Current user role is' + USER_ROLE + '\n\n'
         'If the user is unsure of whether they have registered, you MUST ask them to provide the administrator ID number and THEN use the right tool to check the registration status.\n\n'
@@ -192,29 +170,126 @@ lookup_by_id_tool = FunctionTool.from_defaults(
     ),
 )
 
-policy_engine_tmpl = PromptTemplate(policy_engine_tmpl_str)
-policy_enging_refine_tmpl = PromptTemplate(policy_engine_refine_tmpl_str)
-policy_engine = index.as_query_engine(
-    similarity_top_k=5,
-    verbose=True,
-)
-policy_engine.update_prompts(
-    {"response_synthesizer:text_qa_template": policy_engine_tmpl}
-)
-policy_engine.update_prompts(
-    {"response_synthesizer:refine_template": policy_enging_refine_tmpl}
-)
-policy_query_tool = QueryEngineTool(
-    query_engine=policy_engine,
-    metadata=ToolMetadata(
-        name="policy_engine",
-        description="查询大众云学使用条款及方法，具体关于如何注册和如何查询证书和学时等问题，返回最相关的文档。",
-    ),
-)
+def get_query_engine_tool(input_dir, input_files, tool_name, description):
+    policy_engine_tmpl_str = (
+        "注意：回答问题前，请先从用户对话中尝试确定用户角色，若无法推测，则询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
+        # "注意：若用户角色为未知，请先询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
+        "注意：用户角色为未知\n"
+        "语境信息如下\n"
+        "---------------------\n"
+        "{context_str}\n"
+        "---------------------\n"
+        "请根据语境信息，不要使用先验知识，回答下面的问题。\n"
+        "Query: {query_str}\n"
+        "Answer: "
+    )
+    policy_engine_refine_tmpl_str = (
+        "以下是原始查询：{query_str}\n"
+        "我们已经提供了一个现有的答案：{existing_answer}\n"
+        "我们有机会通过下面的一些更多上下文来改进现有的答案（仅在需要时）。\n"
+        "------------\n"
+        "{context_msg}"
+        "------------\n"
+        "根据新的上下文，改进原始答案以更好地回答查询。如果上下文没有用，返回原始答案。\n"
+        "Refined Answer:"
+    )
+    index = load_data(input_dir, input_files)
+    policy_engine = index.as_query_engine(
+        similarity_top_k=5,
+        verbose=True,
+    )
+    policy_engine_tmpl = PromptTemplate(policy_engine_tmpl_str)
+    policy_enging_refine_tmpl = PromptTemplate(policy_engine_refine_tmpl_str)
+    policy_engine.update_prompts(
+        {"response_synthesizer:text_qa_template": policy_engine_tmpl}
+    )
+    policy_engine.update_prompts(
+        {"response_synthesizer:refine_template": policy_enging_refine_tmpl}
+    )
+    policy_query_tool = QueryEngineTool(
+        query_engine=policy_engine,
+        metadata=ToolMetadata(
+            name=tool_name,
+            description=description,
+        ),
+    )
+    return policy_query_tool
+
+# policy_engine_tmpl = PromptTemplate(policy_engine_tmpl_str)
+# policy_enging_refine_tmpl = PromptTemplate(policy_engine_refine_tmpl_str)
+
+# index = load_data(input_dir=None, input_files="./policies/registration/registration.md")
+# policy_engine = index.as_query_engine(
+#     similarity_top_k=5,
+#     verbose=True,
+# )
+# policy_engine.update_prompts(
+#     {"response_synthesizer:text_qa_template": policy_engine_tmpl}
+# )
+# policy_engine.update_prompts(
+#     {"response_synthesizer:refine_template": policy_enging_refine_tmpl}
+# )
+# policy_query_tool = QueryEngineTool(
+#     query_engine=policy_engine,
+#     metadata=ToolMetadata(
+#         name="policy_engine",
+#         description="查询大众云学使用条款及方法，具体关于如何注册和如何查询证书和学时等问题，返回最相关的文档。",
+#     ),
+# )
+# policy_query_tool = get_query_engine_tool(
+#     input_dir=None,
+#     input_files="./policies/registration/registration.md",
+#     tool_name="policy_engine",
+#     description="查询大众云学使用条款及方法，具体关于如何注册和如何查询证书和学时等问题，返回最相关的文档。",
+# )
+
+
 
 tools = [
-    policy_query_tool,
+    # policy_query_tool,
     # multiply_tool,
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/registration.md"],
+        tool_name="registration_engine",
+        description="负责查询大众云学平台的注册方法，返回最相关的文档",
+    ),
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/auditing.md"],
+        tool_name="auditing_engine",
+        description="负责回答关于注册审核的相关问题，返回最相关的文档",
+    ),
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/withdrawal_and_modification.md"],
+        tool_name="withdrawal_engine",
+        description="负责回答关于如何撤回、修改、驳回注册的问题，返回最相关的文档",
+    ),
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/professional_individual_reg_page_faq.md"],
+        tool_name="professional_individual_registration_faq_engine",
+        description="负责回答专技个人注册页面细项，以及常见问题，返回最相关的文档",
+    ),
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/employing_unit_reg_page_faq.md"],
+        tool_name="employing_unit_registration_faq_engine",
+        description="负责回答用人单位注册页面细项，以及常见问题，返回最相关的文档",
+    ),
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/supervisory_department_reg_page_faq.md"],
+        tool_name="supervisory_department_registration_faq_engine",
+        description="负责回答主管部门注册页面细项，以及常见问题，返回最相关的文档",
+    ),
+    get_query_engine_tool(
+        input_dir=None,
+        input_files=["./policies/registration/continuing_edu_inst_reg_page_faq.md"],
+        tool_name="continuing_education_institute_registration_faq_engine",
+        description="负责回答继续教育机构注册页面细项，以及常见问题，返回最相关的文档",
+    ),
     update_user_role_tool,
     lookup_by_id_tool
 ]
