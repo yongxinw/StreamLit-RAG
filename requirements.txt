@@ -1,5 +1,9 @@
-streamlit
-openai
-llama-index
-nltk
-pypdf
+streamlit==1.30.0
+nltk==3.8.1
+dashscope==1.13.6
+langchain==0.1.0
+langchainhub==0.1.14
+langchain-experimental==0.0.49
+unstructured==0.12.6
+faiss-cpu==1.8.0
+numpy==1.24.1

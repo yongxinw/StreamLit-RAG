@@ -2,7 +2,7 @@ import json
 import os
 import sys
 from typing import Any, List, Optional, Type
-
+import streamlit as st
 from langchain.retrievers import ContextualCompressionRetriever
 
 from langchain import hub
@@ -33,6 +33,21 @@ from statics import REGISTRATION_STATUS
 
 os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
 
+st.set_page_config(
+    page_title="大众云学智能客服平台",
+    page_icon="🦙",
+    layout="centered",
+    initial_sidebar_state="auto",
+    menu_items=None,
+)
+st.title("大众云学智能客服平台, powered by LangChain")
+if "messages" not in st.session_state.keys():  # Initialize the chat messages history
+    st.session_state.messages = [
+        {
+            "role": "assistant",
+            "content": "欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。",
+        }
+    ]
 
 # Simple demo tool - a simple calculator
 class SimpleCalculatorTool(BaseTool):
@@ -81,8 +96,8 @@ class RegistrationStatusTool(BaseTool):
         if REGISTRATION_STATUS.get(input) is not None:
             status = REGISTRATION_STATUS.get(input)
             ret_str = [f"{k}: {v}" for k, v in status.items()]
-            ret_str = "\n".join(ret_str)
-            return "经查询，您在大众云学平台上的注册状态如下：\n" + ret_str
+            ret_str = "  \n".join(ret_str)
+            return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
         return "经查询，您尚未在大众云学平台上注册"
 
 
@@ -155,7 +170,7 @@ class AskForUserRoleTool(BaseTool):
     def _run(self, params) -> Any:
         return "请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。"
 
-
+@st.cache_data
 def create_retrieval_tool(
     markdown_path,
     tool_name,
@@ -530,6 +545,33 @@ full_chain = {"topic": router_chain_executor, "input": lambda x: x["input"]} | R
 
 # update prompt with this: agent_executor.agent.runnable.get_prompts()[0]
 
-import ipdb
 
-ipdb.set_trace()
+if "chat_engine" not in st.session_state.keys():  # Initialize the chat engine
+    # st.session_state.chat_engine = index.as_chat_engine(
+    #     chat_mode="condense_question", verbose=True
+    # )
+    st.session_state.chat_engine = full_chain
+
+if prompt := st.chat_input(
+    "您的问题"
+):  # Prompt for user input and save to chat history
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    # st.session_state.chat_engine.memory.add_message(
+    #     {"role": "user", "content": prompt}
+    # )
+
+for message in st.session_state.messages:  # Display the prior chat messages
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
+
+# If last message is not from assistant, generate a new response
+if st.session_state.messages[-1]["role"] != "assistant":
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            # response = st.session_state.chat_engine.chat(prompt)
+            # response = st.session_state.chat_engine.invoke({"input": prompt})
+            response = st.session_state.chat_engine.invoke({"input": prompt})
+            st.write(response["output"])
+            message = {"role": "assistant", "content": response["output"]}
+            # st.session_state.chat_engine.memory.add_message(message)
+            st.session_state.messages.append(message)  # Add response to message history
