@@ -12,7 +12,6 @@ from llama_index.tools import BaseTool, FunctionTool, QueryEngineTool, ToolMetad
 from llama_index.prompts import PromptTemplate
 from statics import REGISTRATION_STATUS
 
-# agent_template_str = '\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n## Tools\nYou have access to a wide variety of tools. You are responsible for using\nthe tools in any sequence you deem appropriate to complete the task at hand.\nThis may require breaking the task into subtasks and using different tools\nto complete each subtask.\n\nYou have access to the following tools:\n{tool_desc}\n\n## Output Format\nTo answer the question, please use the following format.\n\n```\nThought: I need to use a tool to help me answer the question.\nAction: tool name (one of {tool_names}) if using a tool.\nAction Input: the input to the tool, in a JSON format representing the kwargs (e.g. {{"input": "hello world", "num_beams": 5}})\n```\n\nPlease ALWAYS start with a Thought.\n\nPlease use a valid JSON format for the Action Input. Do NOT do this {{\'input\': \'hello world\', \'num_beams\': 5}}.\n\nIf this format is used, the user will respond in the following format:\n\n```\nObservation: tool response\n```\n\nYou should keep repeating the above format until you have enough information\nto answer the question without using any more tools. At that point, you MUST respond\nin the one of the following two formats:\n\n```\nThought: I can answer without using any more tools.\nAnswer: [your answer here]\n```\n\n```\nThought: I cannot answer the question with the provided tools.\nAnswer: Sorry, I cannot answer your query.\n```\n\n ALWAYS check user role from chat history before any actions. When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly. When user has provided role information, use the correct tool to update user role and proceed with the answering questions. \n\n## Current Conversation\nBelow is the current conversation consisting of interleaving human and assistant messages.\n\n'
 agent_template_str = (
     '\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n'
     '## Tools\nYou have access to a wide variety of tools. You are responsible for using\n'
@@ -214,36 +213,6 @@ def get_query_engine_tool(input_dir, input_files, tool_name, description):
         ),
     )
     return policy_query_tool
-
-# policy_engine_tmpl = PromptTemplate(policy_engine_tmpl_str)
-# policy_enging_refine_tmpl = PromptTemplate(policy_engine_refine_tmpl_str)
-
-# index = load_data(input_dir=None, input_files="./policies/registration/registration.md")
-# policy_engine = index.as_query_engine(
-#     similarity_top_k=5,
-#     verbose=True,
-# )
-# policy_engine.update_prompts(
-#     {"response_synthesizer:text_qa_template": policy_engine_tmpl}
-# )
-# policy_engine.update_prompts(
-#     {"response_synthesizer:refine_template": policy_enging_refine_tmpl}
-# )
-# policy_query_tool = QueryEngineTool(
-#     query_engine=policy_engine,
-#     metadata=ToolMetadata(
-#         name="policy_engine",
-#         description="查询大众云学使用条款及方法，具体关于如何注册和如何查询证书和学时等问题，返回最相关的文档。",
-#     ),
-# )
-# policy_query_tool = get_query_engine_tool(
-#     input_dir=None,
-#     input_files="./policies/registration/registration.md",
-#     tool_name="policy_engine",
-#     description="查询大众云学使用条款及方法，具体关于如何注册和如何查询证书和学时等问题，返回最相关的文档。",
-# )
-
-
 
 tools = [
     # policy_query_tool,
