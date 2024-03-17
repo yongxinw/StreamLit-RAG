@@ -265,52 +265,52 @@ faq_personal_tool = create_retrieval_tool(
     "回答专技个人注册页面细项，以及常见问题，返回最相关的文档，如：证件号提示已存在，没有自己专业，单位找不到，没有单位怎么办，职称系列怎么选择",
 )
 
-# faq_employing_unit_tool = create_retrieval_tool(
-#     "./policies/registration/employing_unit_reg_page_faq.md",
-#     "employing_unit_registration_faq_engine",
-#     "回答用人单位注册页面细项，以及常见问题，返回最相关的文档，如：单位性质和级别怎么选，单位所属行业选什么，主管部门怎么选/什么意思、上级单位是什么意思/怎么选，同级人社选什么，信息选错了怎么办",
-# )
+faq_employing_unit_tool = create_retrieval_tool(
+    "./policies/registration/employing_unit_reg_page_faq.md",
+    "employing_unit_registration_faq_engine",
+    "回答用人单位注册页面细项，以及常见问题，返回最相关的文档，如：单位性质和级别怎么选，单位所属行业选什么，主管部门怎么选/什么意思、上级单位是什么意思/怎么选，同级人社选什么，信息选错了怎么办",
+)
 
-# faq_cont_edu_tool = create_retrieval_tool(
-#     "./policies/registration/continuing_edu_inst_reg_page_faq.md",
-#     "continuing_education_institute_registration_faq_engine",
-#     "回答继续教育机构注册页面细项，以及常见问题，返回最相关的文档，如：机构级别怎么选、什么意思，行业主管部门是什么意思、怎么选，同级人社部门怎么选/同级人社呢，选错了怎么办/选的不对会有什么影响",
-# )
+faq_cont_edu_tool = create_retrieval_tool(
+    "./policies/registration/continuing_edu_inst_reg_page_faq.md",
+    "continuing_education_institute_registration_faq_engine",
+    "回答继续教育机构注册页面细项，以及常见问题，返回最相关的文档，如：机构级别怎么选、什么意思，行业主管部门是什么意思、怎么选，同级人社部门怎么选/同级人社呢，选错了怎么办/选的不对会有什么影响",
+)
 
-# cannot_register_tool = create_retrieval_tool(
-#     "./policies/registration/cannot_register.md",
-#     "cannot_register_engine",
-#     "回答用户无法注册的相关问题，返回最相关的文档，如：注册不了怎么办，注册不上怎么办，注册不了，无法注册，注册保存以后什么反应也没有，注册没反应",
-#     search_kwargs={"k": 1},
-# )
+cannot_register_tool = create_retrieval_tool(
+    "./policies/registration/cannot_register.md",
+    "cannot_register_engine",
+    "回答用户无法注册的相关问题，返回最相关的文档，如：注册不了怎么办，注册不上怎么办，注册不了，无法注册，注册保存以后什么反应也没有，注册没反应",
+    search_kwargs={"k": 1},
+)
 
-# login_problems_tool = create_retrieval_tool(
-#     "./policies/registration/login_problems.md",
-#     "login_problems_engine",
-#     "回答用户登录问题的相关问题，返回最相关的文档，如：登录不了、无法登录、怎么登录不上",
-#     search_kwargs={"k": 1},
-#     chunk_size=100,
-#     separators=["\n\n"],
-# )
+login_problems_tool = create_retrieval_tool(
+    "./policies/registration/login_problems.md",
+    "login_problems_engine",
+    "回答用户登录问题的相关问题，返回最相关的文档，如：登录不了、无法登录、怎么登录不上",
+    search_kwargs={"k": 1},
+    chunk_size=100,
+    separators=["\n\n"],
+)
 
-# login_problems_detail_tool = create_retrieval_tool(
-#     "./policies/registration/login_problems_details.md",
-#     "login_problems_detail_engine",
-#     "回答用户登录问题的细节相关问题，返回最相关的文档，如：没有滑块，找不到滑块，登录为什么提示验证失败，哪里有滑块，密码错误，忘记密码，账号不存在，登录显示审核中",
-#     search_kwargs={"k": 1},
-#     chunk_size=100,
-#     separators=["\n\n"],
-# )
+login_problems_detail_tool = create_retrieval_tool(
+    "./policies/registration/login_problems_details.md",
+    "login_problems_detail_engine",
+    "回答用户登录问题的细节相关问题，返回最相关的文档，如：没有滑块，找不到滑块，登录为什么提示验证失败，哪里有滑块，密码错误，忘记密码，账号不存在，登录显示审核中",
+    search_kwargs={"k": 1},
+    chunk_size=100,
+    separators=["\n\n"],
+)
 
 # TODO: Add more here
-# forgot_password_tool = create_retrieval_tool(
-#     "./policies/registration/forgot_password.md",
-#     "forgot_password_engine",
-#     "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码",
-#     # search_kwargs={"k": 1},
-#     # chunk_size=100,
-#     # separators=["\n\n"]
-# )
+forgot_password_tool = create_retrieval_tool(
+    "./policies/registration/forgot_password.md",
+    "forgot_password_engine",
+    "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码",
+    # search_kwargs={"k": 1},
+    # chunk_size=100,
+    # separators=["\n\n"]
+)
 
 # create operation retrievers
 individual_operation_tool = create_retrieval_tool(
