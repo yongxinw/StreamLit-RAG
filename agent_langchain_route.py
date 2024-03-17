@@ -250,52 +250,52 @@ faq_personal_tool = create_retrieval_tool(
     "回答专技个人注册页面细项，以及常见问题，返回最相关的文档，如：证件号提示已存在，没有自己专业，单位找不到，没有单位怎么办，职称系列怎么选择",
 )
 
-# faq_employing_unit_tool = create_retrieval_tool(
-#     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/employing_unit_reg_page_faq.md",
-#     "employing_unit_registration_faq_engine",
-#     "回答用人单位注册页面细项，以及常见问题，返回最相关的文档，如：单位性质和级别怎么选，单位所属行业选什么，主管部门怎么选/什么意思、上级单位是什么意思/怎么选，同级人社选什么，信息选错了怎么办",
-# )
+faq_employing_unit_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/employing_unit_reg_page_faq.md",
+    "employing_unit_registration_faq_engine",
+    "回答用人单位注册页面细项，以及常见问题，返回最相关的文档，如：单位性质和级别怎么选，单位所属行业选什么，主管部门怎么选/什么意思、上级单位是什么意思/怎么选，同级人社选什么，信息选错了怎么办",
+)
 
-# faq_cont_edu_tool = create_retrieval_tool(
-#     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/continuing_edu_inst_reg_page_faq.md",
-#     "continuing_education_institute_registration_faq_engine",
-#     "回答继续教育机构注册页面细项，以及常见问题，返回最相关的文档，如：机构级别怎么选、什么意思，行业主管部门是什么意思、怎么选，同级人社部门怎么选/同级人社呢，选错了怎么办/选的不对会有什么影响",
-# )
+faq_cont_edu_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/continuing_edu_inst_reg_page_faq.md",
+    "continuing_education_institute_registration_faq_engine",
+    "回答继续教育机构注册页面细项，以及常见问题，返回最相关的文档，如：机构级别怎么选、什么意思，行业主管部门是什么意思、怎么选，同级人社部门怎么选/同级人社呢，选错了怎么办/选的不对会有什么影响",
+)
 
-# cannot_register_tool = create_retrieval_tool(
-#     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/cannot_register.md",
-#     "cannot_register_engine",
-#     "回答用户无法注册的相关问题，返回最相关的文档，如：注册不了怎么办，注册不上怎么办，注册不了，无法注册，注册保存以后什么反应也没有，注册没反应",
-#     search_kwargs={"k": 1},
-# )
+cannot_register_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/cannot_register.md",
+    "cannot_register_engine",
+    "回答用户无法注册的相关问题，返回最相关的文档，如：注册不了怎么办，注册不上怎么办，注册不了，无法注册，注册保存以后什么反应也没有，注册没反应",
+    search_kwargs={"k": 1},
+)
 
-# login_problems_tool = create_retrieval_tool(
-#     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/login_problems.md",
-#     "login_problems_engine",
-#     "回答用户登录问题的相关问题，返回最相关的文档，如：登录不了、无法登录、怎么登录不上",
-#     search_kwargs={"k": 1},
-#     chunk_size=100,
-#     separators=["\n\n"],
-# )
+login_problems_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/login_problems.md",
+    "login_problems_engine",
+    "回答用户登录问题的相关问题，返回最相关的文档，如：登录不了、无法登录、怎么登录不上",
+    search_kwargs={"k": 1},
+    chunk_size=100,
+    separators=["\n\n"],
+)
 
-# login_problems_detail_tool = create_retrieval_tool(
-#     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/login_problems_details.md",
-#     "login_problems_detail_engine",
-#     "回答用户登录问题的细节相关问题，返回最相关的文档，如：没有滑块，找不到滑块，登录为什么提示验证失败，哪里有滑块，密码错误，忘记密码，账号不存在，登录显示审核中",
-#     search_kwargs={"k": 1},
-#     chunk_size=100,
-#     separators=["\n\n"],
-# )
+login_problems_detail_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/login_problems_details.md",
+    "login_problems_detail_engine",
+    "回答用户登录问题的细节相关问题，返回最相关的文档，如：没有滑块，找不到滑块，登录为什么提示验证失败，哪里有滑块，密码错误，忘记密码，账号不存在，登录显示审核中",
+    search_kwargs={"k": 1},
+    chunk_size=100,
+    separators=["\n\n"],
+)
 
 # TODO: Add more here
-# forgot_password_tool = create_retrieval_tool(
-#     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/forgot_password.md",
-#     "forgot_password_engine",
-#     "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码",
-#     # search_kwargs={"k": 1},
-#     # chunk_size=100,
-#     # separators=["\n\n"]
-# )
+forgot_password_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/forgot_password.md",
+    "forgot_password_engine",
+    "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码",
+    # search_kwargs={"k": 1},
+    # chunk_size=100,
+    # separators=["\n\n"]
+)
 
 # create operation retrievers
 individual_operation_tool = create_retrieval_tool(
@@ -323,6 +323,63 @@ supervisory_department_operation_tool = create_retrieval_tool(
     separators=["\n\n"],
 )
 
+# create modify info retrievers
+personal_modify_info_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/modify_info/professional_person_modify_info.md",
+    "professional_person_modify_info_engine",
+    "回答专技个人注册信息修改相关问题，返回最相关的文档，如：怎么改姓名、姓名错了能改吗、怎么改身份证号码，怎么修改单位/单位错了怎么改、怎么修改单位区域、单位区域错了怎么改，怎么修改手机号、手机号错了，怎么修改，怎么修改职称、职称换了，怎么改",
+    search_kwargs={"k": 5},
+    chunk_size=200,
+    separators=["\n\n"],
+)
+
+employ_supervise_modify_info_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/modify_info/employ_supervise_modify_info.md",
+    "employ_supervise_modify_info_engine",
+    "回答用人单位、主管部门注册信息修改相关问题，返回最相关的文档，如：怎么更换超级管理员、管理员能更换吗，修改用人单位/主管部门账号手机号、邮箱，怎么修改单位名称，怎么修改统一信用代码，如何查询上级部门、上级部门管理员信息，怎么修改单位区域、注册地/单位地址，怎么更换单位上级部门",
+    search_kwargs={"k": 5},
+    chunk_size=200,
+    separators=["\n\n"],
+)
+
+cont_edu_modify_info_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/modify_info/cont_edu_modify_info.md",
+    "cont_edu_modify_info_engine",
+    "回答继续教育机构的注册信息修改相关问题，返回最相关的文档，如：怎么更换超级管理员、管理员能更换吗，修改继续教育机构账号手机号、邮箱，怎么修改单位名称，怎么修改统一信用代码，如何查询上级部门、上级部门管理员信息，怎么修改单位区域、注册地/单位地址，怎么更换单位上级部门",
+    search_kwargs={"k": 7},
+    chunk_size=400,
+    separators=["\n\n"],
+)
+
+# complaints
+complaints_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/complaints/complaints.md",
+    "complaints_engine",
+    "回答用户投诉相关问题，返回最相关的文档，如：建议增加人员删除功能，建议单位账号可以不使用管理员身份证号，可以自己设置，浮动公告飘的太快、遮挡信息，关闭按钮不明显，不方便关闭，客服联系方式遮挡信息，建议设置关闭按钮，查询统计的数据、怎么导出数据、怎么导出单位所有人的学习情况的数据，退休人员的账号怎么办、退休人员怎么调出本单位、怎么删除退休人员的账号，为什么不能手机网页登陆、手机网页不能登录、页面显示不全，建议添加新的专业的课程、课程里没有我的专业，有没有课件、没有课件讲解吗，课程不能倍速播放、视频播放太慢了，购买怎么不能一起支付、课程怎么一块买",
+    search_kwargs={"k": 10},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
+# policy inquiry
+policy_inquiry_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/policy_inquiry/policy_inquiry.md",
+    "policy_inquiry_engine",
+    "回答用户政策咨询相关问题，返回最相关的文档，如：职称评审什么时候、职称评审有什么要求，新一年继续教育学习时间、什么时候能报名学习、往年的课程还能补学吗、报名时间，报职称有什么要求，我需要继续教育吗、每年都需要继续教育吗，为什么要继续教育",
+    search_kwargs={"k": 5},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
+# other questions
+other_questions_tool = create_retrieval_tool(
+    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/other_questions/other_questions.md",
+    "other_questions_engine",
+    "回答用户其他问题，返回最相关的文档，如：会计人员需要几年继续教育、会计人员在哪里学习、会计人员需要学习公需课吗、会计的怎么补学、卫生技术在哪里学习、医护人员在哪里学习、卫生技术专业怎么补学， 平台上怎么收费，省直单位公需课怎么收费、课程没学完怎么办、怎么开发票，有卫健委的电话吗、有人社电话吗、有主管部门电话吗、人社电话是哪一个、职称评审部门电话是什么，评职称需要什么条件，评职称需要学习几年继续教育，怎么和贵平台合作、想和你们合作，怎么联系，买课收费吗、学习要交费吗、为什么要收费、能便宜吗、有优惠吗，怎么注销账号、我要把账号注销",
+    search_kwargs={"k": 8},
+    chunk_size=100,
+    separators=["\n\n"],
+)
 
 # Create Agent
 model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
@@ -338,15 +395,21 @@ tools = [
     auditing_tool,
     withdrawal_tool,
     faq_personal_tool,
-    # faq_employing_unit_tool,
-    # faq_cont_edu_tool,
-    # cannot_register_tool,
-    # login_problems_tool,
-    # login_problems_detail_tool,
-    # forgot_password_tool,
+    faq_employing_unit_tool,
+    faq_cont_edu_tool,
+    cannot_register_tool,
+    login_problems_tool,
+    login_problems_detail_tool,
+    forgot_password_tool,
     individual_operation_tool,
     employing_unit_operation_tool,
     supervisory_department_operation_tool,
+    personal_modify_info_tool,
+    employ_supervise_modify_info_tool,
+    cont_edu_modify_info_tool,
+    complaints_tool,
+    policy_inquiry_tool,
+    other_questions_tool,
 ]
 
 # DO NOT hallucinate!!! You MUST use a tool to collect information to answer the questions!!! ALWAYS use a tool to answer a question if possible. Otherwise, you MUST ask the user for more information.
@@ -420,7 +483,7 @@ router_prompt = hub.pull("hwchase17/react")
 router_prompt.template = """Your ONLY job is to determine the user role. DO NOT Answer the question.
 
 You MUST use a tool to find out the user role.
-DO NOT hallucinate!!!!
+ALWAYS use a tool.
 
 You have access to the following tools:
 

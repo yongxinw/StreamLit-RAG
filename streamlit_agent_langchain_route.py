@@ -338,6 +338,64 @@ supervisory_department_operation_tool = create_retrieval_tool(
     separators=["\n\n"],
 )
 
+# create modify info retrievers
+personal_modify_info_tool = create_retrieval_tool(
+    "./policies/modify_info/professional_person_modify_info.md",
+    "professional_person_modify_info_engine",
+    "回答专技个人注册信息修改相关问题，返回最相关的文档，如：怎么改姓名、姓名错了能改吗、怎么改身份证号码，怎么修改单位/单位错了怎么改、怎么修改单位区域、单位区域错了怎么改，怎么修改手机号、手机号错了，怎么修改，怎么修改职称、职称换了，怎么改",
+    search_kwargs={"k": 5},
+    chunk_size=200,
+    separators=["\n\n"],
+)
+
+employ_supervise_modify_info_tool = create_retrieval_tool(
+    "./policies/modify_info/employ_supervise_modify_info.md",
+    "employ_supervise_modify_info_engine",
+    "回答用人单位、主管部门注册信息修改相关问题，返回最相关的文档，如：怎么更换超级管理员、管理员能更换吗，修改用人单位/主管部门账号手机号、邮箱，怎么修改单位名称，怎么修改统一信用代码，如何查询上级部门、上级部门管理员信息，怎么修改单位区域、注册地/单位地址，怎么更换单位上级部门",
+    search_kwargs={"k": 5},
+    chunk_size=200,
+    separators=["\n\n"],
+)
+
+cont_edu_modify_info_tool = create_retrieval_tool(
+    "./policies/modify_info/cont_edu_modify_info.md",
+    "cont_edu_modify_info_engine",
+    "回答继续教育机构的注册信息修改相关问题，返回最相关的文档，如：怎么更换超级管理员、管理员能更换吗，修改继续教育机构账号手机号、邮箱，怎么修改单位名称，怎么修改统一信用代码，如何查询上级部门、上级部门管理员信息，怎么修改单位区域、注册地/单位地址，怎么更换单位上级部门",
+    search_kwargs={"k": 7},
+    chunk_size=400,
+    separators=["\n\n"],
+)
+
+# complaints
+complaints_tool = create_retrieval_tool(
+    "./policies/complaints/complaints.md",
+    "complaints_engine",
+    "回答用户投诉相关问题，返回最相关的文档，如：建议增加人员删除功能，建议单位账号可以不使用管理员身份证号，可以自己设置，浮动公告飘的太快、遮挡信息，关闭按钮不明显，不方便关闭，客服联系方式遮挡信息，建议设置关闭按钮，查询统计的数据、怎么导出数据、怎么导出单位所有人的学习情况的数据，退休人员的账号怎么办、退休人员怎么调出本单位、怎么删除退休人员的账号，为什么不能手机网页登陆、手机网页不能登录、页面显示不全，建议添加新的专业的课程、课程里没有我的专业，有没有课件、没有课件讲解吗，课程不能倍速播放、视频播放太慢了，购买怎么不能一起支付、课程怎么一块买",
+    search_kwargs={"k": 10},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
+# policy inquiry
+policy_inquiry_tool = create_retrieval_tool(
+    "./policies/policy_inquiry/policy_inquiry.md",
+    "policy_inquiry_engine",
+    "回答用户政策咨询相关问题，返回最相关的文档，如：职称评审什么时候、职称评审有什么要求，新一年继续教育学习时间、什么时候能报名学习、往年的课程还能补学吗、报名时间，报职称有什么要求，我需要继续教育吗、每年都需要继续教育吗，为什么要继续教育",
+    search_kwargs={"k": 5},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
+# other questions
+other_questions_tool = create_retrieval_tool(
+    "./policies/other_questions/other_questions.md",
+    "other_questions_engine",
+    "回答用户其他问题，返回最相关的文档，如：会计人员需要几年继续教育、会计人员在哪里学习、会计人员需要学习公需课吗、会计的怎么补学、卫生技术在哪里学习、医护人员在哪里学习、卫生技术专业怎么补学， 平台上怎么收费，省直单位公需课怎么收费、课程没学完怎么办、怎么开发票，有卫健委的电话吗、有人社电话吗、有主管部门电话吗、人社电话是哪一个、职称评审部门电话是什么，评职称需要什么条件，评职称需要学习几年继续教育，怎么和贵平台合作、想和你们合作，怎么联系，买课收费吗、学习要交费吗、为什么要收费、能便宜吗、有优惠吗，怎么注销账号、我要把账号注销",
+    search_kwargs={"k": 8},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
 
 # Create Agent
 model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
