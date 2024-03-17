@@ -2,9 +2,8 @@ import json
 import os
 import sys
 from typing import Any, List, Optional, Type
-import streamlit as st
-from langchain.retrievers import ContextualCompressionRetriever
 
+import streamlit as st
 from langchain import hub
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.callbacks.manager import (
@@ -14,6 +13,7 @@ from langchain.callbacks.manager import (
 from langchain.embeddings.dashscope import DashScopeEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.pydantic_v1 import BaseModel, Field
+from langchain.retrievers import ContextualCompressionRetriever
 from langchain.text_splitter import (
     CharacterTextSplitter,
     RecursiveCharacterTextSplitter,
@@ -28,11 +28,13 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from statics import REGISTRATION_STATUS
 
-os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
-
+# os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
+os.environ["DASHSCOPE_API_KEY"] = "sk-c92ed98926194b84a41a73db62af31d5"
+os.environ["OPENAI_API_KEY"] = "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"
 st.set_page_config(
     page_title="大众云学智能客服平台",
     page_icon="🦙",
@@ -48,6 +50,7 @@ if "messages" not in st.session_state.keys():  # Initialize the chat messages hi
             "content": "欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。",
         }
     ]
+
 
 # Simple demo tool - a simple calculator
 class SimpleCalculatorTool(BaseTool):
@@ -124,14 +127,15 @@ class UpdateUserRoleTool(BaseTool):
         if user_role not in ["专技个人", "用人单位", "主管部门", "继续教育机构"]:
             return "您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。"
         agent_executor.agent.runnable.get_prompts()[0].template = (
-
-"""Your ONLY job is to use a tool to answer the following question.
+            """Your ONLY job is to use a tool to answer the following question.
 
 You MUST use a tool to answer the question. 
 Simply Answer "抱歉，根据我的搜索结果，我无法回答这个问题" if you don't know the answer.
 DO NOT answer the question without using a tool.
 
-Current user role is """ + user_role + """.
+Current user role is """
+            + user_role
+            + """.
 
 You have access to the following tools:
 
@@ -170,7 +174,9 @@ class AskForUserRoleTool(BaseTool):
     def _run(self, params) -> Any:
         return "请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。"
 
-@st.cache_data
+
+# @st.cache_data
+@st.cache_resource
 def create_retrieval_tool(
     markdown_path,
     tool_name,
@@ -191,6 +197,7 @@ def create_retrieval_tool(
     embeddings = DashScopeEmbeddings(
         model="text-embedding-v2",
     )
+    # embeddings = OpenAIEmbeddings()
 
     # Chunk the files
     # chunk_size = 100
@@ -404,6 +411,7 @@ model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
 # model.model_name = "qwen-max"
 # model.model_kwargs = {"temperature": 0.3}
 
+
 tools = [
     # multiply,
     RegistrationStatusTool(),
@@ -470,7 +478,7 @@ prompt.input_variables = [
 ]
 
 memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
-agent = create_react_agent(model, tools, prompt)
+agent = create_react_agent(ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3), tools, prompt)
 agent_executor = AgentExecutor.from_agent_and_tools(
     agent=agent, tools=tools, memory=memory, verbose=True, handle_parsing_errors=True
 )
@@ -536,6 +544,7 @@ router_tools = [CheckUserRoleTool()]
 
 router_chain = create_react_agent(
     Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
     router_tools,
     router_prompt,
 )
@@ -582,11 +591,15 @@ user_role_tools = [UpdateUserRoleTool()]
 
 user_role_chain = create_react_agent(
     Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
     user_role_tools,
     user_role_prompt,
 )
 user_role_chain_executor = AgentExecutor.from_agent_and_tools(
-    agent=user_role_chain, tools=user_role_tools, verbose=True, handle_parsing_errors=True
+    agent=user_role_chain,
+    tools=user_role_tools,
+    verbose=True,
+    handle_parsing_errors=True,
 )
 
 
@@ -607,7 +620,11 @@ def route(info):
         return user_role_chain_executor
     return agent_executor
 
-full_chain = {"topic": router_chain_executor, "input": lambda x: x["input"]} | RunnableLambda(route)
+
+full_chain = {
+    "topic": router_chain_executor,
+    "input": lambda x: x["input"],
+} | RunnableLambda(route)
 
 # update prompt with this: agent_executor.agent.runnable.get_prompts()[0]
 
