@@ -420,6 +420,12 @@ tools = [
     individual_operation_tool,
     employing_unit_operation_tool,
     supervisory_department_operation_tool,
+    personal_modify_info_tool,
+    employ_supervise_modify_info_tool,
+    cont_edu_modify_info_tool,
+    complaints_tool,
+    policy_inquiry_tool,
+    other_questions_tool,
 ]
 
 # DO NOT hallucinate!!! You MUST use a tool to collect information to answer the questions!!! ALWAYS use a tool to answer a question if possible. Otherwise, you MUST ask the user for more information.
