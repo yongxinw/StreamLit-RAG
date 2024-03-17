@@ -317,7 +317,7 @@ individual_operation_tool = create_retrieval_tool(
     "./policies/operation/individual_operation.md",
     "individual_operation_engine",
     "回答专技个人学时、学时申报、修改单位的系统操作相关问题，返回最相关的文档，如：怎么学时申报，如何提交学时，为什么不能学时申报，学时申报信息天填错了怎么办，学时信息填好后无法保存，我怎么不能学时申报、我的账号里怎么没有学时申报，证书和发明专利能申报、抵扣多少学时。再如：怎么修改单位，修改单位的话，现在单位能知道吗，现在单位审核吗，单位调转提示有待审核信息，不能修改单位，单位调转信息填错怎么办，怎么删除人员，离职的人员怎么办，怎么调到临时单位",
-    # search_kwargs={"k": 5},
+    search_kwargs={"k": 10},
     chunk_size=100,
     separators=["\n\n"],
 )
@@ -326,6 +326,7 @@ employing_unit_operation_tool = create_retrieval_tool(
     "./policies/operation/employing_unit_operation.md",
     "employing_unit_operation_engine",
     "回答用人单位学时申报、注册审核、信息变更、更换管理员、人员信息查询的系统操作相关问题，返回最相关的文档，如：单位怎么审核，怎么把人员调出单位，人员离职了怎么调出去，如何审核人员提交的学时，学时申报错了，单位也审核了怎么办，怎么驳回，学时申报错了，单位也审核了怎么办，单位培训计划，怎么提交、审核，怎么更换单位超级管理员，单位如何增加管理员，如何查询单位名下专技人员信息",
+    search_kwargs={"k": 10},
     chunk_size=100,
     separators=["\n\n"],
 )
@@ -334,6 +335,7 @@ supervisory_department_operation_tool = create_retrieval_tool(
     "./policies/operation/supervisory_department_operation.md",
     "supervisory_department_operation_engine",
     "回答主管部门注册审核、信息变更、继续教育机构审核、单位调转审核、学时申报审核、人员信息查询的系统操作相关问题，返回最相关的文档，如：如何审核单位或个人注册信息、人员或用人单位信息变更审核、如何审核继教机构信息、人员调入和单位调转审核操作、如何审核专技人员的学时、学时报错了，怎么驳回、学时申报错了，也审核通过了，还能驳回吗、如何查询主管部门下面单位情况",
+    search_kwargs={"k": 10},
     chunk_size=100,
     separators=["\n\n"],
 )
