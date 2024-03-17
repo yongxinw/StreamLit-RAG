@@ -28,7 +28,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+# from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from statics import REGISTRATION_STATUS
 
@@ -407,7 +407,7 @@ other_questions_tool = create_retrieval_tool(
 
 
 # Create Agent
-model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+# model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
 # model.model_name = "qwen-max"
 # model.model_kwargs = {"temperature": 0.3}
 
@@ -478,7 +478,11 @@ prompt.input_variables = [
 ]
 
 memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
-agent = create_react_agent(ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3), tools, prompt)
+agent = create_react_agent(
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    tools, 
+    prompt
+)
 agent_executor = AgentExecutor.from_agent_and_tools(
     agent=agent, tools=tools, memory=memory, verbose=True, handle_parsing_errors=True
 )
