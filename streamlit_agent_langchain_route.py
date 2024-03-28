@@ -10,6 +10,7 @@ from langchain.callbacks.manager import (
     AsyncCallbackManagerForToolRun,
     CallbackManagerForToolRun,
 )
+from langchain.chains import LLMChain
 from langchain.embeddings.dashscope import DashScopeEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.pydantic_v1 import BaseModel, Field
@@ -28,12 +29,15 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
+
+from statics import COURSE_PURCHASES, CREDIT_HOURS, LOC_STR, REGISTRATION_STATUS
+import re
+
 # from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-from statics import REGISTRATION_STATUS
 
-# os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
-os.environ["DASHSCOPE_API_KEY"] = "sk-c92ed98926194b84a41a73db62af31d5"
+os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
+# os.environ["DASHSCOPE_API_KEY"] = "sk-c92ed98926194b84a41a73db62af31d5"
 os.environ["OPENAI_API_KEY"] = "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"
 st.set_page_config(
     page_title="大众云学智能客服平台",
@@ -47,7 +51,7 @@ if "messages" not in st.session_state.keys():  # Initialize the chat messages hi
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。",
+            "content": "欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。测试请使用身份证号372323199509260348。测试公需课/专业课学时，请使用年份2019/2020。测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。",
         }
     ]
 
@@ -126,7 +130,7 @@ class UpdateUserRoleTool(BaseTool):
         user_role = params_dict["user_role"]
         if user_role not in ["专技个人", "用人单位", "主管部门", "继续教育机构"]:
             return "您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。"
-        agent_executor.agent.runnable.get_prompts()[0].template = (
+        main_qa_agent_executor.agent.runnable.get_prompts()[0].template = (
             """Your ONLY job is to use a tool to answer the following question.
 
 You MUST use a tool to answer the question. 
@@ -159,23 +163,307 @@ Question: {input}
 Thought:{agent_scratchpad}
 """
         )
+        # st.session_state.user_role = user_role
         return f"更新您的用户角色为{user_role}, 请问有什么可以帮到您？"
 
 
-class AskForUserRoleTool(BaseTool):
-    """询问用户角色"""
+class CheckUserRoleTool(BaseTool):
+    """根据用户回答，检查用户角色"""
 
-    name: str = "用户角色询问工具"
-    description: str = "用于询问用户的角色，无需输入参数"
+    name: str = "检查用户角色工具"
+    description: str = "用于检查用户在对话中的角色，无需输入参数 "
+    # args_schema: Type[BaseModel] = CalculatorInput
+    return_direct: bool = True
+
+    def _run(self, params) -> Any:
+        print(params)
+        template = main_qa_agent_executor.agent.runnable.get_prompts()[
+            0
+        ].template.lower()
+        # print(template)
+        start_index = template.find("current user role is") + len(
+            "current user role is"
+        )
+        end_index = template.find("\n", start_index)
+        result = template[start_index:end_index].strip()
+        # result = st.session_state.get("user_role", "unknown")
+        return result
+
+
+class CheckUserLocTool(BaseTool):
+    """根据用户回答，检查用户学习的地市"""
+
+    name: str = "检查用户地市工具"
+    description: str = "用于检查用户地市，无需输入参数 "
+    # args_schema: Type[BaseModel] = CalculatorInput
+    return_direct: bool = True
+
+    def _run(self, params) -> Any:
+        print(params)
+        template = credit_problem_chain_executor.agent.runnable.get_prompts()[
+            0
+        ].template.lower()
+        # print(template)
+        start_index = template.find("user location: ") + len("user location: ")
+        end_index = template.find("\n", start_index)
+        result = template[start_index:end_index].strip()
+        # result = st.session_state.get("user_role", "unknown")
+        return result
+
+
+class UpdateUserLocTool(BaseTool):
+    """根据用户回答，更新用户学习地市"""
+
+    name: str = "用户学习地市更新工具"
+    description: str = (
+        "用于更新用户学习地市，需要指通过 json 指定用户学习地市 user_location "
+    )
     # args_schema: Type[BaseModel] = CalculatorInput
     return_direct: bool = True
 
     # def _run(self, a: int, b: int, run_manager: Optional[CallbackManagerForToolRun] = None) -> Any:
     def _run(self, params) -> Any:
-        return "请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。"
+        print(params)
+        try:
+            params_dict = json.loads(params)
+        except json.JSONDecodeError:
+            return (
+                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
+                + LOC_STR
+            )
+        if "user_location" not in params_dict:
+            return (
+                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
+                + LOC_STR
+            )
+        user_location = params_dict["user_location"]
+        # if user_location not in LOC_STR:
+        #     return "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n" + LOC_STR
+        credit_problem_chain_executor.agent.runnable.get_prompts()[0].template = (
+            """Use a tool to answer the user's qustion.
+
+You MUST use a tool and generate a response based on tool's output.
+When user input a number longer than 6 digits, use it as user id number in the context for the tool.
+When the user input a four-digit number, use it as year in the context for the tool.
+DO NOT hallucinate!!!!
+                                                     
+user location: """
+            + user_location
+            + """
+You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do.
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+{chat_history}
+Question: {input}
+Thought:{agent_scratchpad}
+"""
+        )
+        # st.session_state.user_role = user_role
+        return f"谢谢，已为您更新您的学习地市为{user_location}, 现在请您提供身份证号码，以便我查询您的学时状态。"
 
 
-# @st.cache_data
+class CheckUserCreditTool(BaseTool):
+    """根据用户回答，检查用户学时状态"""
+
+    name: str = "检查用户学时状态工具"
+    description: str = (
+        "用于检查用户学时状态，需要指通过 json 指定用户身份证号 user_id_number、用户想要查询的年份 year、用户想要查询的课程类型 course_type "
+    )
+    # args_schema: Type[BaseModel] = CalculatorInput
+    return_direct: bool = True
+
+    def _run(self, params) -> Any:
+
+        params = params.replace("'", '"')
+        print(params, type(params))
+        CONTEXT_PROMPT = "You must ask the human about {context}. Reply with schema #2."
+        try:
+            params_dict = json.loads(params)
+        except json.JSONDecodeError as e:
+            print(e)
+            return "麻烦您提供一下您的身份证号，我这边帮您查一下"
+
+        if "user_id_number" not in params_dict:
+            return "麻烦您提供一下您的身份证号"
+        if len(params_dict["user_id_number"]) < 2:
+            return "身份证号似乎不太对，麻烦您提供一下您正确的身份证号"
+        if "year" not in params_dict:
+            return "您问的是哪个年度的课程？如：2019年"
+        if len(str(params_dict["year"])) < 2:
+            return "年度似乎不太对，麻烦您确认你的课程年度。如：2019年"
+        if "course_type" not in params_dict:
+            return "您要查询的是公需课还是专业课"
+        if len(params_dict["course_type"]) < 2:
+            return "请确认您要查询的是公需课还是专业课"
+
+        user_id_number = str(params_dict["user_id_number"])
+        year = re.search(r"\d+", str(params_dict["year"])).group()
+        course_type = str(params_dict["course_type"])
+
+        template = credit_problem_chain_executor.agent.runnable.get_prompts()[
+            0
+        ].template.lower()
+        # print(template)
+        start_index = template.find("user location: ") + len("user location: ")
+        end_index = template.find("\n", start_index)
+        user_provided_loc = template[start_index:end_index].strip()
+
+        user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
+
+        if user_provided_loc not in user_loc and user_loc not in user_provided_loc:
+            if user_provided_loc in ["开放大学","蟹壳云学","专技知到","文旅厅","教师"]:
+                return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
+            return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
+        else:
+            if user_provided_loc in ["开放大学","蟹壳云学","专技知到","文旅厅","教师"]:
+                return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+            hours = CREDIT_HOURS.get(user_id_number)
+            if hours is None:
+                return "经查询，平台还未接收到您的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+            year_hours = hours.get(year)
+            if year_hours is None:
+                return f"经查询，平台还未接收到您在{year}年度的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+            course_year_hours = year_hours.get(course_type)
+            if course_year_hours is None:
+                return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+            if len(course_year_hours) == 0:
+                return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+            total_hours = sum([x["学时"] for x in course_year_hours])
+            finished_hours = sum([x["学时"] for x in course_year_hours if x["进度"] == 100 and x["考核"] == "合格"])
+            unfinished_courses = [f"{x['课程名称']}完成了{x['进度']}%" for x in course_year_hours if x["进度"] < 100]
+            untested_courses = [x['课程名称'] for x in course_year_hours if x["考核"] == "未完成"]
+            unfinished_str = "  \n\n".join(unfinished_courses)
+            untested_str = "  \n\n".join(untested_courses)
+
+            res_str = f"经查询，您在{year}年度{course_type}的学时情况如下：  \n\n"
+            res_str += f"您报名的总学时：{total_hours}  \n\n"
+            res_str += f"已完成学时：{finished_hours}  \n\n"
+            res_str += f"其中，以下几节课进度还没有达到100%，每节课进度看到100%后才能计入学时  \n\n"
+            res_str += unfinished_str + "  \n\n"
+            res_str += f"以下几节课还没有完成考试，考试通过后才能计入学时  \n\n"
+            res_str += untested_str + "  \n\n"
+            return res_str
+
+
+class RefundTool(BaseTool):
+    """根据用户回答，检查用户购买课程记录"""
+
+    name: str = "检查用户购买课程记录工具"
+    description: str = (
+        "用于检查用户购买课程记录，需要指通过 json 指定用户身份证号 user_id_number、用户想要查询的课程年份 year、用户想要查询的课程名称 course_name "
+    )
+    # args_schema: Type[BaseModel] = CalculatorInput
+    return_direct: bool = True
+
+    def _run(self, params) -> Any:
+
+        params = params.replace("'", '"')
+        print(params, type(params))
+        try:
+            params_dict = json.loads(params)
+        except json.JSONDecodeError as e:
+            print(e)
+            return "麻烦您提供一下您的身份证号，我这边帮您查一下"
+
+        if "user_id_number" not in params_dict:
+            return "麻烦您提供一下您的身份证号"
+        if len(params_dict["user_id_number"]) < 2:
+            return "身份证号似乎不太对，麻烦您提供一下您正确的身份证号"
+        if "year" not in params_dict:
+            return "您问的是哪个年度的课程？如：2019年"
+        if len(params_dict["year"]) < 4:
+            return "年度似乎不太对，麻烦您确认你的课程年度。如：2019年"
+        if "course_name" not in params_dict:
+            return "您问的课程名称是什么？如：新闻专业课培训班"
+        if len(params_dict["course_name"]) < 2:
+            return "课程名称似乎不太对，请您提供您想要查询的课程的正确名称。如：新闻专业课培训班"
+
+        user_id_number = params_dict["user_id_number"]
+
+        year = params_dict["year"]
+        year = re.search(r"\d+", year).group()
+
+        course_name = params_dict["course_name"]
+        if COURSE_PURCHASES.get(user_id_number) is not None:
+            purchases = COURSE_PURCHASES.get(user_id_number)
+            if year in purchases:
+                if course_name in purchases[year]:
+                    progress = purchases[year][course_name]["进度"]
+                    if progress == 0:
+                        return "经查询您的这个课程没有学习，您可以点击右上方【我的学习】，选择【我的订单】，找到对应课程点击【申请售后】，费用在1个工作日会原路退回。"
+                    return f"经查询，您的课程{course_name}学习进度为{progress}%，可以按照未学的比例退费，如需退费请联系平台的人工热线客服或者在线客服进行反馈。"
+                return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+            return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+        return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+
+
+class CheckPurchaseTool(BaseTool):
+    """根据用户回答，检查用户购买课程记录"""
+
+    name: str = "检查用户购买课程记录工具"
+    description: str = (
+        "用于检查用户购买课程记录，需要指通过 json 指定用户身份证号 user_id_number、用户想要查询的课程年份 year、用户想要查询的课程名称 course_name "
+    )
+    # args_schema: Type[BaseModel] = CalculatorInput
+    return_direct: bool = True
+
+    def _run(self, params) -> Any:
+
+        params = params.replace("'", '"')
+        print(params, type(params))
+        try:
+            params_dict = json.loads(params)
+            params_dict = {k: str(v) for k, v in params_dict.items()}
+        except json.JSONDecodeError as e:
+            print(e)
+            return "麻烦您提供一下您的身份证号，我这边帮您查一下"
+
+        if "user_id_number" not in params_dict:
+            return "麻烦您提供一下您的身份证号"
+        if len(str(params_dict["user_id_number"])) < 2:
+            return "身份证号似乎不太对，麻烦您提供一下您正确的身份证号"
+        if "year" not in params_dict:
+            return "您问的是哪个年度的课程？如：2019年"
+        if len(str(params_dict["year"])) < 4:
+            return "年度似乎不太对，麻烦您确认你的课程年度。如：2019年"
+        if "course_name" not in params_dict:
+            return "您问的课程名称是什么？如：新闻专业课培训班"
+        if len(params_dict["course_type"]) < 2:
+            return "课程名称似乎不太对，请您提供您想要查询的课程的正确名称。如：新闻专业课培训班"
+
+        user_id_number = params_dict["user_id_number"]
+
+        year = params_dict["year"]
+        year = re.search(r"\d+", year).group()
+
+        course_name = params_dict["course_name"]
+        if COURSE_PURCHASES.get(user_id_number) is not None:
+            purchases = COURSE_PURCHASES.get(user_id_number)
+            if year in purchases:
+                if course_name in purchases[year]:
+                    progress = purchases[year][course_name]["进度"]
+                    if progress == 0:
+                        return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
+                    return f"经查询，您已经购买{year}年度的{course_name}，您的学习进度为{progress}%。请前往专业课平台，点击右上方【我的学习】找到对应课程继续学习。"
+                return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+            return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+        return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+
+
 @st.cache_resource
 def create_retrieval_tool(
     markdown_path,
@@ -405,6 +693,34 @@ other_questions_tool = create_retrieval_tool(
     separators=["\n\n"],
 )
 
+# online learning and test
+online_learning_and_tests_tool = create_retrieval_tool(
+    "./policies/online_learning_and_tests/online_learning_and_tests.md",
+    "online_learning_and_tests_engine",
+    "回答用户关于在线学习和考试的相关问题，返回最相关的文档，如：如何报班、怎么报名学习、公需课怎么报名、专业课怎么报名，济宁市高级职业学校/山东理工职业学院/微山县人民医院怎么报名课程、怎么补学、学习标准、年度学习要求是什么、学习到什么时候、什么时间能学、明年学行吗、课程没学完怎么办、用考试吗、必须考试吗、考试多少分合格、考试分数线是多少、考试有几次机会、我的考试在哪、怎么看考试",
+    search_kwargs={"k": 8},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
+payments_tool = create_retrieval_tool(
+    "./policies/payments/payments.md",
+    "payments_engine",
+    "回答用户关于支付的相关问题，返回最相关的文档，如：发票怎么开、能不能重开发票、发票错了能重开吗、发票列表在哪、怎么找发票、课程是怎么收费的、1学时多少钱、课程什么价格、课程报名有优惠吗、能便宜吗、集体缴费审核、集体缴费怎么退款、集体缴费用错卡支付",
+    search_kwargs={"k": 8},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+
+certificate_and_hours_tool = create_retrieval_tool(
+    "./policies/certificate_and_hours/certificate_and_hours.md",
+    "certificate_and_hours_engine",
+    "回答用户关于证书和学时的相关问题，返回最相关的文档，如：怎么下载证书、怎么打印证书、证书打印、没有证书、为什么打印不了证书，公需课达标是多少、专业课达标是多少、达标要求、达标是什么标准，学时对接到哪、会对接到会计平台吗、会对接到济南市/德州市/东营市平台吗，会计网学的学时可以对接到省平台吗、在文旅厅平台学习的，学时没对接",
+    search_kwargs={"k": 3},
+    chunk_size=100,
+    separators=["\n\n"],
+)
+    
 
 # Create Agent
 # model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
@@ -436,6 +752,9 @@ tools = [
     complaints_tool,
     policy_inquiry_tool,
     other_questions_tool,
+    online_learning_and_tests_tool,
+    payments_tool,
+    certificate_and_hours_tool
 ]
 
 # DO NOT hallucinate!!! You MUST use a tool to collect information to answer the questions!!! ALWAYS use a tool to answer a question if possible. Otherwise, you MUST ask the user for more information.
@@ -479,38 +798,19 @@ prompt.input_variables = [
 
 memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
 agent = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
-    tools, 
-    prompt
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}), tools, prompt
 )
-agent_executor = AgentExecutor.from_agent_and_tools(
+main_qa_agent_executor = AgentExecutor.from_agent_and_tools(
     agent=agent, tools=tools, memory=memory, verbose=True, handle_parsing_errors=True
 )
 
 
 # create a router chain
-class CheckUserRoleTool(BaseTool):
-    """根据用户回答，检查用户角色"""
-
-    name: str = "检查用户角色工具"
-    description: str = "用于检查用户在对话中的角色，无需输入参数 "
-    # args_schema: Type[BaseModel] = CalculatorInput
-    return_direct: bool = True
-
-    def _run(self, params) -> Any:
-        print(params)
-        template = agent_executor.agent.runnable.get_prompts()[0].template.lower()
-        # print(template)
-        start_index = template.find("current user role is") + len(
-            "current user role is"
-        )
-        end_index = template.find("\n", start_index)
-        result = template[start_index:end_index].strip()
-        return result
 
 
-router_prompt = hub.pull("hwchase17/react")
-router_prompt.template = """Your ONLY job is to determine the user role. DO NOT Answer the question.
+# check user role agent
+check_user_role_router_prompt = hub.pull("hwchase17/react")
+check_user_role_router_prompt.template = """Your ONLY job is to determine the user role. DO NOT Answer the question.
 
 You MUST use a tool to find out the user role.
 DO NOT hallucinate!!!!
@@ -537,27 +837,31 @@ Question: {input}
 Thought:{agent_scratchpad}
 user role:
 """
-router_prompt.input_variables = [
+check_user_role_router_prompt.input_variables = [
     "agent_scratchpad",
     "input",
     "tool_names",
     "tools",
 ]
 
-router_tools = [CheckUserRoleTool()]
+check_user_role_router_tools = [CheckUserRoleTool()]
 
-router_chain = create_react_agent(
+check_user_role_router_chain = create_react_agent(
     Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
     # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
-    router_tools,
-    router_prompt,
+    check_user_role_router_tools,
+    check_user_role_router_prompt,
 )
-router_chain_executor = AgentExecutor.from_agent_and_tools(
-    agent=router_chain, tools=router_tools, verbose=True, handle_parsing_errors=True
+check_user_role_router_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=check_user_role_router_chain,
+    tools=check_user_role_router_tools,
+    verbose=True,
+    handle_parsing_errors=True,
 )
 
-user_role_prompt = hub.pull("hwchase17/react")
-user_role_prompt.template = """Your ONLY job is to ask the user to provide their role information regardless of the input.
+# Update user role agent
+update_user_role_prompt = hub.pull("hwchase17/react")
+update_user_role_prompt.template = """Your ONLY job is to ask the user to provide their role information regardless of the input.
 
 You MUST ALWAYS say: 请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。
 You MUST use a tool to update user role.
@@ -584,53 +888,603 @@ Begin!
 Question: {input}
 Thought:{agent_scratchpad}
 """
-user_role_prompt.input_variables = [
+update_user_role_prompt.input_variables = [
     "agent_scratchpad",
     "input",
     "tool_names",
     "tools",
 ]
 
-user_role_tools = [UpdateUserRoleTool()]
+update_user_role_tools = [UpdateUserRoleTool()]
 
-user_role_chain = create_react_agent(
+update_user_role_chain = create_react_agent(
     Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
     # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
-    user_role_tools,
-    user_role_prompt,
+    update_user_role_tools,
+    update_user_role_prompt,
 )
-user_role_chain_executor = AgentExecutor.from_agent_and_tools(
-    agent=user_role_chain,
-    tools=user_role_tools,
+update_user_role_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=update_user_role_chain,
+    tools=update_user_role_tools,
     verbose=True,
     handle_parsing_errors=True,
 )
 
 
-# general_chain = (
-#     PromptTemplate.from_template(
-#         """Respond to the following question:
+# routing
+def check_user_role_and_route(info):
+    print(info["topic"])
+    if "unknown" in info["topic"]["output"].lower():
+        return update_user_role_chain_executor
+    return main_qa_agent_executor
 
+
+main_qa_chain = {
+    "topic": check_user_role_router_chain_executor,
+    "input": lambda x: x["input"],
+} | RunnableLambda(check_user_role_and_route)
+
+
+# check_is_credit_record_chain = check_is_credit_record_prompt | Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}) | StrOutputParser()
+
+# this will be replaced with an agent
+# general_chain = PromptTemplate.from_template("""Respond to the following user input:
+
+# # Question: {input}
+# # Answer:""") | Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+
+credit_problem_prompt = PromptTemplate.from_template(
+    """Use a tool to answer the user's qustion.
+
+You MUST use a tool and generate a response based on tool's output.
+When user input a number longer than 6 digits, use it as user id number in the context for the tool.
+When the user input a four-digit number, use it as year in the context for the tool.
+DO NOT hallucinate!!!! DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
+
+user location: unknown
+
+You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do.
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+{chat_history}
+Question: {input}
+Thought:{agent_scratchpad}
+"""
+)
+credit_problem_prompt.input_variables = [
+    "agent_scratchpad",
+    "input",
+    "tool_names",
+    "tools",
+    "chat_history",
+]
+
+credit_problem_tools = [CheckUserCreditTool()]
+credit_problem_memory = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input"
+)
+credit_problem_chain = create_react_agent(
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
+    credit_problem_tools,
+    credit_problem_prompt,
+)
+credit_problem_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=credit_problem_chain,
+    tools=credit_problem_tools,
+    memory=credit_problem_memory,
+    verbose=True,
+    handle_parsing_errors=True,
+)
+
+# check user location
+check_user_loc_router_prompt = hub.pull("hwchase17/react")
+check_user_loc_router_prompt.template = """Your ONLY job is to determine the user location. DO NOT Answer the question.
+
+NO MATTER WHAT, use a tool to find out the user location.
+ALWAYS use a tool to check the user location.
+You MUST use a tool to find out the user location.
+DO NOT hallucinate!!!!
+
+You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: the input question you will not answer
+Thought: you should always think about what to do.
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+
+Question: {input}
+Thought:{agent_scratchpad}
+user role:
+"""
+check_user_loc_router_prompt.input_variables = [
+    "agent_scratchpad",
+    "input",
+    "tool_names",
+    "tools",
+]
+
+check_user_loc_router_tools = [CheckUserLocTool()]
+
+check_user_loc_router_chain = create_react_agent(
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
+    check_user_loc_router_tools,
+    check_user_loc_router_prompt,
+)
+check_user_loc_router_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=check_user_loc_router_chain,
+    tools=check_user_loc_router_tools,
+    verbose=True,
+    handle_parsing_errors=True,
+)
+
+# update user location agent
+update_user_location_prompt = hub.pull("hwchase17/react")
+update_user_location_prompt.template = (
+    """Your ONLY job is to ask the user to provide their location information regardless of the input.
+
+You MUST ALWAYS say: 请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"""
+    + LOC_STR
+    + """
+
+You MUST use a tool to update user role.
+DO NOT hallucinate!!!!
+
+You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do.
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+
+Question: {input}
+Thought:{agent_scratchpad}
+"""
+)
+update_user_location_prompt.input_variables = [
+    "agent_scratchpad",
+    "input",
+    "tool_names",
+    "tools",
+]
+
+update_user_location_tools = [UpdateUserLocTool()]
+
+update_user_location_chain = create_react_agent(
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
+    update_user_location_tools,
+    update_user_location_prompt,
+)
+update_user_location_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=update_user_location_chain,
+    tools=update_user_location_tools,
+    verbose=True,
+    handle_parsing_errors=True,
+)
+
+
+def check_user_loc_and_route(info):
+    print(info["topic"])
+    if "unknown" in info["topic"]["output"].lower():
+        return update_user_location_chain_executor
+    return credit_problem_chain_executor
+
+
+main_credit_problem_chain = {
+    "topic": check_user_loc_router_chain_executor,
+    "input": lambda x: x["input"],
+} | RunnableLambda(check_user_loc_and_route)
+
+# course progress
+course_progress_problems_prompt = PromptTemplate.from_template(
+    """Answer the user's question step by step. Don't give the whole answer at once. Guide the user to the solution.
+
+Always start with Step 1 below, DO NOT go to Step 2. Only execute Step 1 first. Do Not include the keyword `Step 1` or `Step 2` in your response.
+
+Step 1. First check the user's learning method belongs to 电脑浏览器 or 手机微信扫码
+
+Step 2. Based on the user's choice in Step 1,
+If the user's learning method belongs to 电脑浏览器 or 手机微信扫码, then say 电脑浏览器请不要使用IE、edge等自带浏览器，可以使用搜狗、谷歌、360浏览器极速模式等浏览器试试。
+Otherwise, say 目前支持的学习方式是电脑浏览器或者手机微信扫码两种，建议您再使用正确的方式试试
+If the user's used the right method but still has problems, then say 建议清除浏览器或者微信缓存再试试
+If the user used the right method and 清除了缓存, then say，抱歉，您的问题涉及到测试，建议您联系平台的人工热线客服或者在线客服进行反馈
+
+{chat_history}
+Question: {input}
+"""
+)
+course_progress_problems_prompt.input_variables = [
+    "input",
+    "chat_history",
+]
+course_progress_problems_llm = Tongyi(
+    model_name="qwen-max", model_kwargs={"temperature": 0.3}
+)
+course_progress_problems_memory = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input", return_messages=True
+)
+course_progress_problems_llm_chain = LLMChain(
+    llm=course_progress_problems_llm,
+    memory=course_progress_problems_memory,
+    prompt=course_progress_problems_prompt,
+    verbose=True,
+    output_key="output",
+)
+
+
+# multiple login
+multiple_login_prompt = PromptTemplate.from_template(
+    """Answer the user's question step by step. Don't give the whole answer at once. Guide the user to the solution.
+
+Always start with Step 1 below, DO NOT go to Step 2. Only execute Step 1 first. Do Not include the keyword `Step 1` or `Step 2` in your response.
+
+Step 1
+First check the user's learning method belongs to 电脑浏览器 or 手机微信扫码
+
+Step 2
+Based on the user's choice in Step 1,
+If the user's learning method belongs to 电脑浏览器 or 手机微信扫码, then say 请勿使用电脑和手机同时登录账号学习，也不要使用电脑或手机同时登录多人账号学习。
+If the user say 没有登录多个账号/没有同时登录 etc., say 建议您清除电脑浏览器或手机微信缓存，并修改平台登录密码后重新登录学习试试。
+
+{chat_history}
+Question: {input}
+"""
+)
+multiple_login_prompt.input_variables = [
+    "input",
+    "chat_history",
+]
+multiple_login_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+multiple_login_memory = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input", return_messages=True
+)
+multiple_login_llm_chain = LLMChain(
+    llm=multiple_login_llm,
+    memory=multiple_login_memory,
+    prompt=multiple_login_prompt,
+    verbose=True,
+    output_key="output",
+)
+
+
+# how to register class
+register_class_prompt = PromptTemplate.from_template(
+    """Answer the user's question step by step. Don't give the whole answer at once. Guide the user to the solution.
+
+Always start with Step 1 below, DO NOT go to Step 2. Only execute Step 1 first. Do Not include the keyword `Step 1` or `Step 2` in your response.
+
+Step 1. First kindly ask the user whether they want to register 公需课 or 专业课
+
+Step 2. Based on the user's choice in Step 1,
+If the user wants 公需课, then say 选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择对应年度的课程报名学习就可以。如果有考试，需要考试通过后才能计入对应年度的学时。
+If the user wants 专业课, say 选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择与您职称专业相符或者相关的课程进行报名，缴费后可以学习。专业课学完就可以计入对应年度的学时，无需考试。
+If the user wants both, then say 如果要报名公需课，选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择对应年度的课程报名学习就可以。如果有考试，需要考试通过后才能计入对应年度的学时。如果要报名专业课，选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择与您职称专业相符或者相关的课程进行报名，缴费后可以学习。专业课学完就可以计入对应年度的学时，无需考试。
+{chat_history}
+Question: {input}
+"""
+)
+register_class_prompt.input_variables = [
+    "input",
+    "chat_history",
+]
+register_class_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+register_class_memory = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input", return_messages=True
+)
+register_class_llm_chain = LLMChain(
+    llm=register_class_llm,
+    memory=register_class_memory,
+    prompt=register_class_prompt,
+    verbose=True,
+    output_key="output",
+)
+
+# refund agent
+refund_prompt = PromptTemplate.from_template(
+    """Use a tool to answer the user's qustion.
+
+Ask the user to provide 身份证号，in order to 查询课程信息
+You MUST use a tool and generate a response based on tool's output.
+
+When user input a number longer than 6 digits, use it as user 身份证号 in the context for the tool.
+DO NOT hallucinate!!!! 
+
+You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do.
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+{chat_history}
+Question: {input}
+Thought:{agent_scratchpad}
+"""
+)
+refund_prompt.input_variables = [
+    "agent_scratchpad",
+    "input",
+    "tool_names",
+    "tools",
+    "chat_history",
+]
+
+refund_tools = [RefundTool()]
+refund_memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
+refund_chain = create_react_agent(
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
+    refund_tools,
+    refund_prompt,
+)
+refund_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=refund_chain,
+    tools=refund_tools,
+    memory=refund_memory,
+    verbose=True,
+    handle_parsing_errors=True,
+)
+
+# refund_course_not_started_prompt = PromptTemplate.from_template(
+#     """Now that user has confirmed that they have not started the course, you should say the following:
+# 对于没有学习的课程，您可以点击右上方【我的学习】，选择【我的订单】，找到对应课程点击【申请售后】，费用在1个工作日会原路退回。
+
+# DO NOT answer the question. Simply provide the above information.
+                                                                
 # Question: {input}
+
 # Answer:"""
-#     )
-#     | Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+# )
+# refund_course_not_started_prompt.input_variables = ["input"]
+# refund_course_not_started_llm_chain = LLMChain(
+#     llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+#     prompt=refund_course_not_started_prompt,
+#     verbose=True,
+#     output_key="output",
+# )
+
+# refund_ask_if_started_prompt = PromptTemplate.from_template(
+#     """You should say the following:
+# 您要退费的课程学习了吗？
+
+# DO NOT answer the question. Simply provide the above information.
+                                                                
+# Question: {input}
+
+# Answer:"""
+# )
+# refund_ask_if_started_prompt.input_variables = ["input"]
+# refund_ask_if_started_llm_chain = LLMChain(
+#     llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+#     prompt=refund_ask_if_started_prompt,
+#     verbose=True,
+#     output_key="output",
+# )
+
+# refund_router_prompt = PromptTemplate.from_template(
+#     """Based on the chat history only, classify whether the user `学习了课程` or `没有学习课程` or `不知道学没学课程` or `用户未提供信息`.
+
+# # Do not answer the question. Simply classify it as being related to `学习了课程` or `没有学习课程` or `不知道学没学课程` or `用户未提供信息`.
+# # Do not respond with anything other than `学习了课程` or `没有学习课程` or `不知道学没学课程` or `用户未提供信息`.
+
+# {chat_history}
+# Question: {input}
+
+# # Classification:"""
+# )
+# refund_router_prompt.input_variables = ["input", "chat_history"]
+# refund_router_memory = ConversationBufferMemory(
+#     memory_key="chat_history", input_key="input"
+# )
+# refund_router_llm_chain = LLMChain(
+#     llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+#     prompt=refund_router_prompt,
+#     memory=refund_router_memory,
+#     verbose=True,
 # )
 
 
-def route(info):
-    print(info["topic"])
-    if "unknown" in info["topic"]["output"].lower():
-        return user_role_chain_executor
-    return agent_executor
+# def refund_route(info):
+#     print(info)
+#     if "学习了课程" in info["topic"]["text"]:
+#         print("学习了课程")
+#         return refund_chain_executor
+#     if "没有学习课程" in info["topic"]["text"]:
+#         print("没有学习课程")
+#         return refund_course_not_started_llm_chain
+#     if "不知道学没学课程" in info["topic"]["text"]:
+#         print("不知道学没学课程")
+#         return refund_chain_executor
+#     if "用户未提供信息" in info["topic"]["text"]:
+#         print("用户未提供信息")
+#         return refund_ask_if_started_llm_chain
+
+
+# refund_full_chain = {
+#     "topic": refund_router_llm_chain,
+#     "input": lambda x: x["input"],
+# } | RunnableLambda(refund_route)
+
+# cannot find course agent
+cannot_find_course_prompt = PromptTemplate.from_template(
+    """Use a tool to answer the user's qustion.
+
+You MUST use a tool and generate a response based on tool's output.
+
+When user input a number longer than 6 digits, use it as user id number in the context for the tool.
+DO NOT hallucinate!!!!
+
+You have access to the following tools:
+
+{tools}
+
+Use the following format:
+
+Question: the input question you must answer
+Thought: you should always think about what to do.
+Action: the action to take, should be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat N times)
+Thought: I now know the final answer
+Final Answer: the final answer to the original input question
+
+Begin!
+
+{chat_history}
+Question: {input}
+Thought:{agent_scratchpad}
+"""
+)
+cannot_find_course_prompt.input_variables = [
+    "agent_scratchpad",
+    "input",
+    "tool_names",
+    "tools",
+    "chat_history",
+]
+
+cannot_find_course_tools = [CheckPurchaseTool()]
+cannot_find_course_memory = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input"
+)
+cannot_find_course_chain = create_react_agent(
+    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
+    cannot_find_course_tools,
+    cannot_find_course_prompt,
+)
+cannot_find_course_chain_executor = AgentExecutor.from_agent_and_tools(
+    agent=cannot_find_course_chain,
+    tools=cannot_find_course_tools,
+    memory=cannot_find_course_memory,
+    verbose=True,
+    handle_parsing_errors=True,
+)
+# check if the question topic
+# check_is_credit_record_prompt = PromptTemplate.from_template("""Given the user input AND chat history below, classify it as either being about `学时没显示, 学时有问题` or `other`
+
+# # Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `other`.
+# # Do not respond with anything other than `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `other`.
+
+# {chat_history}
+# Question: {input}
+
+# # Classification:""")
+
+template = """Given the user input AND chat history below, classify whether the user's topic being about `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
+
+# Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
+# Do not respond with anything other than `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
+
+{chat_history}
+Question: {input}
+
+# Classification:"""
+
+check_is_credit_record_prompt = PromptTemplate(
+    input_variables=["input", "chat_history"],
+    template=template,
+)
+
+check_is_credit_record_memory = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input"
+)
+
+check_is_credit_record_chain = LLMChain(
+    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    prompt=check_is_credit_record_prompt,
+    memory=check_is_credit_record_memory,
+    verbose=True,
+)
+
+
+def check_is_credit_record_router(info):
+    print(info)
+    if "学时没显示" in info["topic"]["text"]:
+        print("学时没显示")
+        return main_credit_problem_chain
+    if "学时有问题" in info["topic"]["text"]:
+        print("学时有问题")
+        return main_credit_problem_chain
+    if "学时申报" in info["topic"]["text"]:
+        print("学时申报")
+        return main_qa_chain
+    if "学时审核" in info["topic"]["text"]:
+        print("学时审核")
+        return main_qa_chain
+    if "other" in info["topic"]["text"]:
+        print("other")
+        return main_qa_chain
+    if "课程进度" in info["topic"]["text"]:
+        print("课程进度")
+        return course_progress_problems_llm_chain
+    if "多个设备，其他地方登录" in info["topic"]["text"]:
+        print("多个设备，其他地方登录")
+        return multiple_login_llm_chain
+    if "课程退款退费，课程买错了" in info["topic"]["text"]:
+        print("课程退款退费，课程买错了")
+        return refund_chain_executor
+        # return refund_full_chain
+    if "课程找不到，课程没有了" in info["topic"]["text"]:
+        print("课程找不到，课程没有了")
+        return cannot_find_course_chain_executor
+    print("unknown")
+    return main_qa_chain
 
 
 full_chain = {
-    "topic": router_chain_executor,
+    "topic": check_is_credit_record_chain,
     "input": lambda x: x["input"],
-} | RunnableLambda(route)
-
-# update prompt with this: agent_executor.agent.runnable.get_prompts()[0]
+} | RunnableLambda(check_is_credit_record_router)
 
 
 if "chat_engine" not in st.session_state.keys():  # Initialize the chat engine
@@ -658,7 +1512,10 @@ if st.session_state.messages[-1]["role"] != "assistant":
             # response = st.session_state.chat_engine.chat(prompt)
             # response = st.session_state.chat_engine.invoke({"input": prompt})
             response = st.session_state.chat_engine.invoke({"input": prompt})
+            print(response)
+            # st.write(response)
             st.write(response["output"])
             message = {"role": "assistant", "content": response["output"]}
+            # message = {"role": "assistant", "content": response}
             # st.session_state.chat_engine.memory.add_message(message)
             st.session_state.messages.append(message)  # Add response to message history
