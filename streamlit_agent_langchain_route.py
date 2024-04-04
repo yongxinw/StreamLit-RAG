@@ -601,7 +601,7 @@ login_problems_detail_tool = create_retrieval_tool(
 forgot_password_tool = create_retrieval_tool(
     "./policies/registration/forgot_password.md",
     "forgot_password_engine",
-    "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码",
+    "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码，忘记密码手机号那里怎么是空的、手机号不显示、手机号怎么修改、手机号不用了，怎么找回、姓名或身份证号或所在单位有误、提示什么姓名错误、身份证号错误、所在单位有误、密码怎么保存不了、改密码怎么不行、改密码怎么保存不了、密码保存不了",
     # search_kwargs={"k": 1},
     # chunk_size=100,
     # separators=["\n\n"]
@@ -713,7 +713,7 @@ payments_tool = create_retrieval_tool(
 )
 
 certificate_and_hours_tool = create_retrieval_tool(
-    "./policies/certificate_and_hours/certificate_and_hours.md",
+    "./policies/certificates_and_hours/certificates_and_hours.md",
     "certificate_and_hours_engine",
     "回答用户关于证书和学时的相关问题，返回最相关的文档，如：怎么下载证书、怎么打印证书、证书打印、没有证书、为什么打印不了证书，公需课达标是多少、专业课达标是多少、达标要求、达标是什么标准，学时对接到哪、会对接到会计平台吗、会对接到济南市/德州市/东营市平台吗，会计网学的学时可以对接到省平台吗、在文旅厅平台学习的，学时没对接",
     search_kwargs={"k": 3},
