@@ -756,10 +756,9 @@ tools = [
     payments_tool,
     certificate_and_hours_tool
 ]
-
 # DO NOT hallucinate!!! You MUST use a tool to collect information to answer the questions!!! ALWAYS use a tool to answer a question if possible. Otherwise, you MUST ask the user for more information.
-prompt = hub.pull("hwchase17/react")
-prompt.template = """Your ONLY job is to use a tool to answer the following question.
+# prompt = hub.pull("hwchase17/react")
+prompt = PromptTemplate.from_template("""Your ONLY job is to use a tool to answer the following question.
 
 You MUST use a tool to answer the question. 
 Simply Answer "抱歉，根据我的搜索结果，我无法回答这个问题" if you don't know the answer.
@@ -787,7 +786,7 @@ Begin!
 {chat_history}
 Question: {input}
 Thought:{agent_scratchpad}
-"""
+""")
 prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -809,8 +808,9 @@ main_qa_agent_executor = AgentExecutor.from_agent_and_tools(
 
 
 # check user role agent
-check_user_role_router_prompt = hub.pull("hwchase17/react")
-check_user_role_router_prompt.template = """Your ONLY job is to determine the user role. DO NOT Answer the question.
+# check_user_role_router_prompt = hub.pull("hwchase17/react")
+check_user_role_router_prompt = PromptTemplate.from_template(
+    """Your ONLY job is to determine the user role. DO NOT Answer the question.
 
 You MUST use a tool to find out the user role.
 DO NOT hallucinate!!!!
@@ -836,7 +836,7 @@ Begin!
 Question: {input}
 Thought:{agent_scratchpad}
 user role:
-"""
+""")
 check_user_role_router_prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -860,8 +860,10 @@ check_user_role_router_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 # Update user role agent
-update_user_role_prompt = hub.pull("hwchase17/react")
-update_user_role_prompt.template = """Your ONLY job is to ask the user to provide their role information regardless of the input.
+# update_user_role_prompt = hub.pull("hwchase17/react")
+
+update_user_role_prompt = PromptTemplate.from_template(
+    """Your ONLY job is to ask the user to provide their role information regardless of the input.
 
 You MUST ALWAYS say: 请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。
 You MUST use a tool to update user role.
@@ -887,7 +889,7 @@ Begin!
 
 Question: {input}
 Thought:{agent_scratchpad}
-"""
+""")
 update_user_role_prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -992,8 +994,9 @@ credit_problem_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 # check user location
-check_user_loc_router_prompt = hub.pull("hwchase17/react")
-check_user_loc_router_prompt.template = """Your ONLY job is to determine the user location. DO NOT Answer the question.
+# check_user_loc_router_prompt = hub.pull("hwchase17/react")
+check_user_loc_router_prompt = PromptTemplate.from_template(
+    """Your ONLY job is to determine the user location. DO NOT Answer the question.
 
 NO MATTER WHAT, use a tool to find out the user location.
 ALWAYS use a tool to check the user location.
@@ -1021,7 +1024,7 @@ Begin!
 Question: {input}
 Thought:{agent_scratchpad}
 user role:
-"""
+""")
 check_user_loc_router_prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -1045,8 +1048,8 @@ check_user_loc_router_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 # update user location agent
-update_user_location_prompt = hub.pull("hwchase17/react")
-update_user_location_prompt.template = (
+# update_user_location_prompt = hub.pull("hwchase17/react")
+update_user_location_prompt = PromptTemplate.from_template(
     """Your ONLY job is to ask the user to provide their location information regardless of the input.
 
 You MUST ALWAYS say: 请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"""
@@ -1508,13 +1511,18 @@ for message in st.session_state.messages:  # Display the prior chat messages
 # If last message is not from assistant, generate a new response
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        with st.spinner("正在输入..."):
             # response = st.session_state.chat_engine.chat(prompt)
             # response = st.session_state.chat_engine.invoke({"input": prompt})
+
             response = st.session_state.chat_engine.invoke({"input": prompt})
             print(response)
-            # st.write(response)
             st.write(response["output"])
+
+            # for part in full_chain.stream({"input": prompt}):
+            #     print(part)
+            #     st.write(part)
+            
             message = {"role": "assistant", "content": response["output"]}
             # message = {"role": "assistant", "content": response}
             # st.session_state.chat_engine.memory.add_message(message)
