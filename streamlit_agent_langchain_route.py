@@ -51,7 +51,77 @@ if "messages" not in st.session_state.keys():  # Initialize the chat messages hi
     st.session_state.messages = [
         {
             "role": "assistant",
-            "content": "欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。测试请使用身份证号372323199509260348。测试公需课/专业课学时，请使用年份2019/2020。测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。",
+            "content": """欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。测试请使用身份证号372323199509260348。测试公需课/专业课学时，请使用年份2019/2020。测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。测试模拟数据如下：\n\n
+            注册状态 = {
+                "372323199509260348": {
+                    "状态": "已注册",
+                    "注册时间": "2021-03-01",
+                    "注册地点": "济南市",
+                    "管理员": "王芳芳",
+                    "角色": "专技个人",
+                    "单位": "山东省济南市中心医院",
+                },
+            }
+
+            学时记录 = {
+                "372323199509260348": {
+                    "2019": {
+                        "公需课": [
+                            {"课程名称": "公需课1", "学时": 10, "进度": 100, "考核": "合格"},
+                            {"课程名称": "公需课2", "学时": 10, "进度": 100, "考核": "合格"},
+                            {"课程名称": "公需课3", "学时": 10, "进度": 100, "考核": "未完成"},
+                            {"课程名称": "公需课4", "学时": 10, "进度": 85, "考核": "未完成"},
+                        ],
+                        "专业课": [
+                            {"课程名称": "专业课1", "学时": 10, "进度": 100, "考核": "合格"},
+                            {"课程名称": "专业课2", "学时": 10, "进度": 100, "考核": "合格"},
+                            {"课程名称": "专业课3", "学时": 10, "进度": 100, "考核": "未完成"},
+                            {"课程名称": "专业课4", "学时": 10, "进度": 85, "考核": "未完成"},
+                        ],
+                    },
+                    "2020": {
+                        "公需课": [
+                            {"课程名称": "公需课5", "学时": 10, "进度": 100, "考核": "未完成"},
+                            {"课程名称": "公需课6", "学时": 10, "进度": 12, "考核": "未完成"},
+                        ],
+                        "专业课": [
+                            {"课程名称": "专业课5", "学时": 10, "进度": 85, "考核": "未完成"},
+                        ],
+                    },
+                }
+            }
+
+            课程购买记录 = {
+                "372323199509260348": {
+                    "2023": {
+                        "新闻专业课培训班": {
+                            "课程名称": "新闻专业课培训班",
+                            "课程类别": "专业课",
+                            "学时": 10,
+                            "进度": 90,
+                            "考核": "未完成",
+                            "购买时间": "2023-01-01",
+                            "购买地点": "山东省济南市",
+                            "培训机构": "山东省新闻学院",
+                        },
+                    },
+                    "2024": {
+                        "新闻专业课培训班": {
+                            "课程名称": "新闻专业课培训班",
+                            "课程类别": "专业课",
+                            "学时": 10,
+                            "进度": 0,
+                            "考核": "未完成",
+                            "购买时间": "2024-01-01",
+                            "购买地点": "山东省济南市",
+                            "培训机构": "山东省新闻学院",
+                        },
+                    },
+                }
+            }
+            """
+            
+            ,
         }
     ]
 
@@ -993,7 +1063,7 @@ credit_problem_chain_executor = AgentExecutor.from_agent_and_tools(
 
 # check user location
 check_user_loc_router_prompt = hub.pull("hwchase17/react")
-check_user_loc_router_prompt.template = """Your ONLY job is to determine the user location. DO NOT Answer the question.
+check_user_loc_router_prompt.template = """Your ONLY job is to determine the user location. DO NOT Answer the question. DO NOT make prediction based on input question.
 
 NO MATTER WHAT, use a tool to find out the user location.
 ALWAYS use a tool to check the user location.
@@ -1420,7 +1490,7 @@ cannot_find_course_chain_executor = AgentExecutor.from_agent_and_tools(
 
 # # Classification:""")
 
-template = """Given the user input AND chat history below, classify whether the user's topic being about `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
+template = """Given the user input AND chat history below, classify whether the conversation topic or user mentioned being about `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
 
 # Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
 # Do not respond with anything other than `学时没显示` or `学时有问题` or `学时申报` or `学时审核` or `课程进度` or `多个设备，其他地方登录` or `课程退款退费，课程买错了` or `课程找不到，课程没有了` or `other`.
@@ -1464,6 +1534,10 @@ def check_is_credit_record_router(info):
     if "other" in info["topic"]["text"]:
         print("other")
         return main_qa_chain
+    # if "专技个人" in info["topic"]["text"]:
+    #     print("专技个人")
+    #     return update_user_role_chain_executor
+    
     if "课程进度" in info["topic"]["text"]:
         print("课程进度")
         return course_progress_problems_llm_chain
