@@ -1891,7 +1891,7 @@ Here are a few examples:
 - If the user says "学时有问题", you should classify it as `学时有问题`
 - If the user mentions "济宁市", you should classify it as related to `济宁市`.
 - If the user doesn't mention "济宁市", you should NEVER classify it as related to `济宁市`
-- If the user mentions "蟹壳云学 or 开放大学 or 专技知到", you should classify it as `other`
+
 
 {chat_history}
 Question: {input}
