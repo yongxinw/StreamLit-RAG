@@ -875,7 +875,7 @@ cont_edu_modify_info_tool = create_retrieval_tool(
 
 # other+policy_inq+complaints
 all_other_questions_tool = create_retrieval_tool(
-    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/other_questions/other_complaints_policy_inq.md",
+    "./policies/other_questions/other_complaints_policy_inq.md",
     "all_other_questions_engine",
     "回答用户所有其他问题，返回最相关的文档，如：会计人员需要几年继续教育、会计人员在哪里学习、会计人员需要学习公需课吗、会计的怎么补学、卫生技术在哪里学习、医护人员在哪里学习、卫生技术专业怎么补学， 平台上怎么收费，省直单位公需课怎么收费、课程没学完怎么办、怎么开发票，有卫健委的电话吗、有人社电话吗、有主管部门电话吗、人社电话是哪一个、职称评审部门电话是什么，评职称需要什么条件，评职称需要学习几年继续教育，怎么和贵平台合作、想和你们合作，怎么联系，买课收费吗、学习要交费吗、为什么要收费、能便宜吗、有优惠吗，怎么注销账号、我要把账号注销",
     search_kwargs={"k": 3},
@@ -885,7 +885,7 @@ all_other_questions_tool = create_retrieval_tool(
 
 # 济宁市
 jn_city_tool = create_retrieval_tool(
-    "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/jining/jining.md",
+    "./policies/jining/jining.md",
     "jn_city_engine",
     "回答有关济宁市报班缴费，在线学习和缴费的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
