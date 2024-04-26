@@ -59,74 +59,85 @@ if "messages" not in st.session_state.keys():  # Initialize the chat messages hi
         {
             "role": "assistant",
             "content": """欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。测试请使用身份证号372323199509260348。测试公需课/专业课学时，请使用年份2019/2020。测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。测试模拟数据如下：\n\n
-            注册状态 = {
-                "372323199509260348": {
-                    "状态": "已注册",
-                    "注册时间": "2021-03-01",
-                    "注册地点": "济南市",
-                    "管理员": "王芳芳",
-                    "角色": "专技个人",
-                    "单位": "山东省济南市中心医院",
+        专技个人注册状态 = {
+        "372323199509260348": {
+            "状态": "已注册",
+            "注册时间": "2021-03-01",
+            "注册地点": "济南市",
+            "管理员": "王芳芳",
+            "角色": "专技个人",
+            "单位": "山东省济南市中心医院",
+        },
+    }
+
+    用人单位注册状态 = {
+        "山东省济南市中心医院": {
+            "状态": "已注册",
+            "注册时间": "2020-03-01",
+            "注册地点": "济南市",
+            "管理员": "王芳芳",
+            "角色": "用人单位",
+            "上级部门": "山东省医疗协会",
+        }
+    }
+
+    学时记录 = {
+        "372323199509260348": {
+            "2019": {
+                "公需课": [
+                    {"课程名称": "公需课1", "学时": 10, "进度": 100, "考核": "合格"},
+                    {"课程名称": "公需课2", "学时": 10, "进度": 100, "考核": "合格"},
+                    {"课程名称": "公需课3", "学时": 10, "进度": 100, "考核": "未完成"},
+                    {"课程名称": "公需课4", "学时": 10, "进度": 85, "考核": "未完成"},
+                ],
+                "专业课": [
+                    {"课程名称": "专业课1", "学时": 10, "进度": 100, "考核": "合格"},
+                    {"课程名称": "专业课2", "学时": 10, "进度": 100, "考核": "合格"},
+                    {"课程名称": "专业课3", "学时": 10, "进度": 100, "考核": "未完成"},
+                    {"课程名称": "专业课4", "学时": 10, "进度": 85, "考核": "未完成"},
+                ],
+            },
+            "2020": {
+                "公需课": [
+                    {"课程名称": "公需课5", "学时": 10, "进度": 100, "考核": "未完成"},
+                    {"课程名称": "公需课6", "学时": 10, "进度": 12, "考核": "未完成"},
+                ],
+                "专业课": [
+                    {"课程名称": "专业课5", "学时": 10, "进度": 85, "考核": "未完成"},
+                ],
+            },
+        }
+    }
+
+    课程购买记录 = {
+        "372323199509260348": {
+            "2023": {
+                "新闻专业课培训班": {
+                    "课程名称": "新闻专业课培训班",
+                    "课程类别": "专业课",
+                    "学时": 10,
+                    "进度": 90,
+                    "考核": "未完成",
+                    "购买时间": "2023-01-01",
+                    "购买地点": "山东省济南市",
+                    "培训机构": "山东省新闻学院",
                 },
-            }
-
-            学时记录 = {
-                "372323199509260348": {
-                    "2019": {
-                        "公需课": [
-                            {"课程名称": "公需课1", "学时": 10, "进度": 100, "考核": "合格"},
-                            {"课程名称": "公需课2", "学时": 10, "进度": 100, "考核": "合格"},
-                            {"课程名称": "公需课3", "学时": 10, "进度": 100, "考核": "未完成"},
-                            {"课程名称": "公需课4", "学时": 10, "进度": 85, "考核": "未完成"},
-                        ],
-                        "专业课": [
-                            {"课程名称": "专业课1", "学时": 10, "进度": 100, "考核": "合格"},
-                            {"课程名称": "专业课2", "学时": 10, "进度": 100, "考核": "合格"},
-                            {"课程名称": "专业课3", "学时": 10, "进度": 100, "考核": "未完成"},
-                            {"课程名称": "专业课4", "学时": 10, "进度": 85, "考核": "未完成"},
-                        ],
-                    },
-                    "2020": {
-                        "公需课": [
-                            {"课程名称": "公需课5", "学时": 10, "进度": 100, "考核": "未完成"},
-                            {"课程名称": "公需课6", "学时": 10, "进度": 12, "考核": "未完成"},
-                        ],
-                        "专业课": [
-                            {"课程名称": "专业课5", "学时": 10, "进度": 85, "考核": "未完成"},
-                        ],
-                    },
-                }
-            }
-
-            课程购买记录 = {
-                "372323199509260348": {
-                    "2023": {
-                        "新闻专业课培训班": {
-                            "课程名称": "新闻专业课培训班",
-                            "课程类别": "专业课",
-                            "学时": 10,
-                            "进度": 90,
-                            "考核": "未完成",
-                            "购买时间": "2023-01-01",
-                            "购买地点": "山东省济南市",
-                            "培训机构": "山东省新闻学院",
-                        },
-                    },
-                    "2024": {
-                        "新闻专业课培训班": {
-                            "课程名称": "新闻专业课培训班",
-                            "课程类别": "专业课",
-                            "学时": 10,
-                            "进度": 0,
-                            "考核": "未完成",
-                            "购买时间": "2024-01-01",
-                            "购买地点": "山东省济南市",
-                            "培训机构": "山东省新闻学院",
-                        },
-                    },
-                }
-            }
-            """,
+            },
+            "2024": {
+                "新闻专业课培训班": {
+                    "课程名称": "新闻专业课培训班",
+                    "课程类别": "专业课",
+                    "学时": 10,
+                    "进度": 0,
+                    "考核": "未完成",
+                    "购买时间": "2024-01-01",
+                    "购买地点": "山东省济南市",
+                    "培训机构": "山东省新闻学院",
+                },
+            },
+        }
+    }
+    """,
         }
     ]
 
@@ -178,13 +189,13 @@ class RegistrationStatusToolIndividual(BaseTool):
         try:
             params_dict = json.loads(params)
         except json.JSONDecodeError:
-            return "抱歉，我这里似乎出了些问题，请指定您的身份证号"
+            return "抱歉，我还没有成功识别您的身份证号码，请指定"
         if "user_id_number" not in params_dict:
-            return "抱歉，我这里似乎出了些问题，请指定您的身份证号"
+            return "抱歉，我还没有成功识别您的身份证号码，请指定"
         try:
             int(params_dict["user_id_number"])
         except ValueError:
-            return "抱歉，请确认身份证号都是数字，请重新指定您的身份证号"
+            return "抱歉，我还没有成功识别您的身份证号码，请指定"
         input = str(params_dict["user_id_number"])
         if REGISTRATION_STATUS.get(input) is not None:
             status = REGISTRATION_STATUS.get(input)
@@ -208,13 +219,13 @@ class RegistrationStatusToolNonIndividual(BaseTool):
         try:
             params_dict = json.loads(params)
         except json.JSONDecodeError:
-            return "抱歉，我这里似乎出了些问题，请指定单位管理员身份证号或者单位名称或者统一信用代码"
+            return "抱歉，我还没有成功识别您的单位管理员身份证号或者单位名称或者统一信用代码，请指定"
         if "user_id_number" not in params_dict:
-            return "抱歉，我这里似乎出了些问题，请指定单位管理员身份证号或者单位名称或者统一信用代码"
+            return "抱歉，我还没有成功识别您的单位管理员身份证号或者单位名称或者统一信用代码，请指定"
         try:
             str(params_dict["user_id_number"])
         except ValueError:
-            return "抱歉，我这里似乎出了些问题，请指定单位管理员身份证号或者单位名称或者统一信用代码"
+            return "抱歉，我还没有成功识别您的单位管理员身份证号或者单位名称或者统一信用代码，请指定"
         input = str(params_dict["user_id_number"])
         if REGISTRATION_STATUS_NON_IDV.get(input) is not None:
             status = REGISTRATION_STATUS_NON_IDV.get(input)
@@ -966,19 +977,19 @@ update_user_role_chain_executor = AgentExecutor.from_agent_and_tools(
 
 # 常规问题咨询
 individual_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[individual_qa_tool],
+    tools=[individual_qa_tool, RegistrationStatusToolIndividual()],
 )
 
 employing_unit_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[employing_unit_qa_tool],
+    tools=[employing_unit_qa_tool, RegistrationStatusToolNonIndividual()],
 )
 
 supervisory_department_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[supervisory_department_qa_tool],
+    tools=[supervisory_department_qa_tool, RegistrationStatusToolNonIndividual()],
 )
 
 cont_edu_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[cont_edu_qa_tool],
+    tools=[cont_edu_qa_tool, RegistrationStatusToolNonIndividual()],
 )
 
 def check_role_qa_router(info):
@@ -1001,8 +1012,24 @@ def check_role_qa_router(info):
     print("默认进入专技个人")
     return individual_qa_agent_executor_v2
 
+def check_user_role(inputs):
+    template = main_qa_agent_executor.agent.runnable.get_prompts()[
+        0
+    ].template.lower()
+    # print(template)
+    start_index = template.find("current user role is") + len(
+        "current user role is"
+    )
+    end_index = template.find("\n", start_index)
+    result = template[start_index:end_index].strip()
+    # result = st.session_state.get("user_role", "unknown")
+    inputs["output"] = result
+    return inputs
+
+check_user_role_chain = RunnableLambda(check_user_role)
+
 qa_chain_v2 = {
-    "topic": check_user_role_router_chain_executor,
+    "topic": check_user_role_chain,
     "input": lambda x: x["input"],
 } | RunnableLambda(check_role_qa_router)
 
