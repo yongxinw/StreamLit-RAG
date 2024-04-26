@@ -13,10 +13,10 @@ def create_react_agent_with_memory(tools, prompt_str=None):
         prompt_str = """Your ONLY job is to use a tool to answer the following question.
 
         You MUST use a tool to answer the question. 
-        Simply Answer "抱歉，根据我的搜索结果，我无法回答这个问题" if you don't know the answer.
+        Simply Answer "您能提供更多关于这个问题的细节吗？" if you don't know the answer.
         DO NOT answer the question without using a tool.
-
-        Current user role is unknown.
+        
+        Please keep your answers short and to the point.
 
         You have access to the following tools:
 
