@@ -39,6 +39,7 @@ from langchain.tools.retriever import create_retriever_tool
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.llms import Tongyi
 from langchain_community.vectorstores import FAISS
+from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
@@ -1009,8 +1010,6 @@ def create_retrieval_tool(
     loader = UnstructuredMarkdownLoader(markdown_path)
     docs = loader.load()
 
-    print(docs)
-
     # Declare the embedding model
     embeddings = DashScopeEmbeddings(
         model="text-embedding-v2",
@@ -1024,20 +1023,16 @@ def create_retrieval_tool(
             allow_dangerous_deserialization=True,
         )
     else:
-        if separators is not None:
-            text_splitter = RecursiveCharacterTextSplitter(
-                # text_splitter = CharacterTextSplitter(
-                separators=["\n\n"],
-                # separators=["\n\n", "\n"], is_separator_regex=True
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-            )
-        else:
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-            )
-        documents = text_splitter.split_documents(docs)
+        #=============only split by separaters============
+        documents = []
+        all_content = docs[0].page_content
+        texts = [sentence for sentence in all_content.split("\n\n")]
+        meta_data = [docs[0].metadata] * len(texts)
+        for content, meta in zip(texts, meta_data):
+            new_doc = Document(page_content=content, metadata=meta)
+            documents.append(new_doc)
+
+        print(documents)
         vector = FAISS.from_documents(documents, embeddings)
 
         vector.save_local(f"./vector_store/{tool_name}.faiss")
@@ -1065,6 +1060,7 @@ def create_retrieval_tool(
     )
     # import ipdb
     # ipdb.set_trace()
+    registration_tool.return_direct=True
     if return_retriever:
         return registration_tool, retriever
     return registration_tool
@@ -1072,7 +1068,7 @@ def create_retrieval_tool(
 
 # CREATE RETRIEVERS
 individual_qa_tool = create_retrieval_tool(
-    "./policies_v2/individual_qa.md",
+    "./policies_v2/individual_q.md",
     "individual_qa_engine",
     "回答个人用户的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1324,6 +1320,46 @@ update_user_role_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 
+merge_results_prompt = PromptTemplate.from_template(
+    """Answer the user's question based on the information provided below. The information contains the top 3 matches from the database, the first one has the highest matching score.
+
+You don't need to use all the information, some provided information could be irrelavant.
+Make the answer concise and clear.
+Try not to change the content too much.
+
+Information: {context}
+Question: {input}
+"""
+)
+
+merge_results_prompt.input_variables = ["context", "input"]
+
+merge_results_chain = LLMChain(
+    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    prompt=merge_results_prompt,
+    verbose=True,
+)
+
+def merge_results(results):
+    with open('./policies_v2/individual_qa_map.json','r') as f:
+        qa_map = json.load(f)
+
+    print('!!!!!!')
+    print(results)
+    question_list = [res.strip() for res in results['output'].split('\n') if len(res.strip()) > 0]
+    print("length of the answer: ", len(question_list))
+    print(question_list)
+    merged_answers = '\n\n'.join([qa_map[q] for q in question_list])
+    print(merged_answers)
+    return {"context": RunnableLambda(lambda x: {"output": results}), "input": RunnablePassthrough()} | merge_results_chain
+
+def check_if_merge_result(results):
+    output_list = results['output'].split('\n')
+    if len(output_list) < 3:
+        return results
+    else:
+        return merge_results(results)
+
 # 常规问题咨询
 summarization_llm_prompt = PromptTemplate.from_template(
     """ 你的任务是根据以下内容，回答用户的问题。如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
@@ -1449,7 +1485,6 @@ update_user_role_agent = create_atomic_retriever_agent(
 # import ipdb
 # ipdb.set_trace()
 
-
 def check_role_qa_router(info):
     print(info["topic"])
     if "unknown" in info["topic"]["output"].lower():
@@ -1458,7 +1493,7 @@ def check_role_qa_router(info):
         return update_user_role_agent
     elif "专技个人" in info["topic"]["output"].lower():
         print("entering 专技个人")
-        return individual_qa_agent_executor_v2
+        return individual_qa_agent_executor_v2 | RunnableLambda(check_if_merge_result)
     elif "用人单位" in info["topic"]["output"].lower():
         print("entering 用人单位")
         return employing_unit_qa_agent_executor_v2
@@ -1469,7 +1504,7 @@ def check_role_qa_router(info):
         print("entering 继续教育机构")
         return cont_edu_qa_agent_executor_v2
     print("默认进入专技个人")
-    return individual_qa_agent_executor_v2
+    return individual_qa_agent_executor_v2 | RunnableLambda(check_if_merge_result)
 
 
 def check_user_role(inputs):
