@@ -753,7 +753,7 @@ forgot_password_tool = create_retrieval_tool(
 individual_registration_tool = create_retrieval_tool(
     "./policies/registration_with_roles/individual_registration.md",
     "individual_registration_role_engine",
-    "回答专技个人注册相关的任何问题，返回最相关的文档",
+    "回答专技个人注册相关的任何问题，返回最相关的文档，如：个人怎么注册，个人注册还要审核吗，已经注册了登陆显示账号不存在，注册后提示待审核，是谁审核、怎么审核，怎么查看注册待审核信息，怎么联系单位管理员，个人怎么撤回重新注册，注册提示证件号已存在/提示账号已存在，所在单位没有搜到/单位找不到，怎么注册不了，专技个人登录账号是什么，职称系列怎么选择/职称系列里没有自己的职称/没有职称怎么办",
     search_kwargs={"k": 3},
     chunk_size=100,
     separators=["\n\n"],
@@ -762,7 +762,7 @@ individual_registration_tool = create_retrieval_tool(
 employing_unit_registration_tool = create_retrieval_tool(
     "./policies/registration_with_roles/employing_unit_registration.md",
     "employing_unit_registration_role_engine",
-    "回答用人单位注册、账号审核、注册审核相关的任何问题，返回最相关的文档",
+    "回答用人单位注册、账号审核、注册审核相关的任何问题，返回最相关的文档，如：用人单位怎么注册，单位注册谁给审核、审核流程是什么，登陆平台怎么提示账号正在审核中，怎么查看注册待审核信息，怎么联系单位管理员，怎么联系上级审核部门，用人单位撤回注册，单位怎么撤回，重新注册，单位性质和级别怎么选，所属行业选什么，主管部门怎么写、怎么选/什么意思、上级单位是什么意思/怎么选，怎么注册不了，单位账号密码怎么找回",
     search_kwargs={"k": 3},
     chunk_size=100,
     separators=["\n\n"],
@@ -771,7 +771,7 @@ employing_unit_registration_tool = create_retrieval_tool(
 supervisory_department_registration_tool = create_retrieval_tool(
     "./policies/registration_with_roles/supervisory_department_registration.md",
     "supervisory_department_registration_role_engine",
-    "回答主管部门注册相关的任何问题，返回最相关的文档",
+    "回答主管部门注册相关的任何问题，返回最相关的文档，如：主管部门怎么注册，已经注册了登陆显示账号不存在，登陆平台怎么提示账号正在审核中，怎么查看注册待审核信息，怎么联系单位管理员，怎么联系上级审核部门，主管部门注册错了，怎么撤回，主管部门性质和级别写什么/怎么选/什么意思，无法注册，主管部门账号是什么",
     search_kwargs={"k": 3},
     chunk_size=100,
     separators=["\n\n"],
@@ -780,7 +780,7 @@ supervisory_department_registration_tool = create_retrieval_tool(
 cont_edu_registration_tool = create_retrieval_tool(
     "./policies/registration_with_roles/cont_edu_registration.md",
     "cont_edu_registration_role_engine",
-    "回答继续教育机构注册相关的任何问题，返回最相关的文档",
+    "回答继续教育机构注册相关的任何问题，返回最相关的文档，如：继续教育机构怎么注册，机构怎么注册，继续教育机构注册谁给审核、审核流程是什么，注册后提示待审核，是谁审核、怎么审核，怎么查看注册待审核信息，继续教育机构怎么撤回注册，这个机构级别怎么选/什么意思，行业主管部门是什么意思/怎么选，怎么注册不了，继续教育机构的登录账号密码是什么",
     search_kwargs={"k": 3},
     chunk_size=100,
     separators=["\n\n"],
@@ -2050,7 +2050,7 @@ for message in st.session_state.messages:  # Display the prior chat messages
 # If last message is not from assistant, generate a new response
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        with st.spinner("正在输入..."):
             # response = st.session_state.chat_engine.chat(prompt)
             # response = st.session_state.chat_engine.invoke({"input": prompt})
             response = st.session_state.chat_engine.invoke({"input": prompt})
