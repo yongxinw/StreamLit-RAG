@@ -1,3 +1,10 @@
+from langchain.tools.render import render_text_description
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.runnables import RunnableBranch, RunnableLambda, RunnableParallel, RunnablePassthrough
+
+from operator import itemgetter
+
 import json
 import os
 import re
@@ -180,21 +187,22 @@ class RegistrationStatusToolIndividual(BaseTool):
 
     name: str = "专技个人注册状态查询工具"
     description: str = (
-        "用于查询专技个人在大众云学平台上的注册状态，需要指通过 json 指定用户身份证号 user_id_number "
+        "用于查询专技个人在大众云学平台上的注册状态，只有当用户明确提及需要帮助查询时调用，需要指通过 json 指定用户身份证号 user_id_number "
     )
     return_direct: bool = True
 
     def _run(self, params) -> Any:
         print(params)
-        try:
-            params_dict = json.loads(params)
-        except json.JSONDecodeError:
-            return "抱歉，我还没有成功识别您的身份证号码，请指定"
+        params_dict = params
+        # try:
+        #     params_dict = json.loads(params)
+        # except json.JSONDecodeError:
+        #     return "抱歉，我还没有成功识别您的身份证号码，请指定"
         if "user_id_number" not in params_dict:
             return "抱歉，我还没有成功识别您的身份证号码，请指定"
         try:
             int(params_dict["user_id_number"])
-        except ValueError:
+        except Exception:
             return "抱歉，我还没有成功识别您的身份证号码，请指定"
         input = str(params_dict["user_id_number"])
         if REGISTRATION_STATUS.get(input) is not None:
@@ -210,7 +218,7 @@ class RegistrationStatusToolNonIndividual(BaseTool):
 
     name: str = "非个人注册状态查询工具"
     description: str = (
-        "用于查询用人单位、主管部门或继续教育机构在大众云学平台上的注册状态，需要指通过 json 指定用户身份证号 user_id_number "
+        "用于查询用人单位、主管部门或继续教育机构在大众云学平台上的注册状态，只有当用户明确提及需要帮助查询时调用，需要指通过 json 指定用户身份证号 user_id_number "
     )
     return_direct: bool = True
 
@@ -755,7 +763,7 @@ supervisory_department_qa_tool = create_retrieval_tool(
 cont_edu_qa_tool = create_retrieval_tool(
     "./policies_v2/cont_edu_qa.md",
     "cont_edu_qa_engine",
-    "回答继续教育机构用户的相关问题，返回最相关的文档",
+    "回答继续教育机构用户的相关问题，返回最相关的文档，如：",
     search_kwargs={"k": 3},
     chunk_size=100,
     separators=["\n\n"],
@@ -976,21 +984,132 @@ update_user_role_chain_executor = AgentExecutor.from_agent_and_tools(
 
 
 # 常规问题咨询
-individual_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[individual_qa_tool, RegistrationStatusToolIndividual()],
-)
+summarization_llm_prompt = PromptTemplate.from_template(
+    """ 你的任务是根据以下内容，回答用户的问题。如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
+    {context}
+    
+    不要添加任何新的信息，只需要总结原文的内容并回答问题。
+    不要提供任何个人观点或者评论。
+    不要产生幻觉。
 
-employing_unit_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[employing_unit_qa_tool, RegistrationStatusToolNonIndividual()],
+    请回答以下问题：
+    {input}
+    """
 )
+summarization_llm_prompt.input_variables = ["input"]
+summarization_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
 
-supervisory_department_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[supervisory_department_qa_tool, RegistrationStatusToolNonIndividual()],
-)
+def output_parser(model_output):
+    return {"output": model_output}
 
-cont_edu_qa_agent_executor_v2 = create_react_agent_with_memory(
-    tools=[cont_edu_qa_tool, RegistrationStatusToolNonIndividual()],
-)
+def create_test_agent(tools):
+
+    # rendered_tools = render_text_description([individual_qa_tool, RegistrationStatusToolIndividual()])
+    rendered_tools = render_text_description(tools)
+
+    system_prompt = f"""You are an assistant that has access to the following set of tools. Here are the names and descriptions for each tool:
+
+    {rendered_tools}
+    
+    If you find none of the tools relevant, you can use the individual_qa_tool to answer the question.
+
+    A few examples below:
+    - user: "我想知道我的注册状态", 调用 专技个人注册状态查询工具
+    - user: "292993194919231411", 调用 专技个人注册状态查询工具
+    - user: "怎么查看注册待审核信息", 调用 individual_qa_engine
+    - user: "怎么审核？", 调用 individual_qa_engine
+
+    Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys. 'argument' value should be a json with the input to the tool."""
+
+    prompt = ChatPromptTemplate.from_messages(
+        [("system", system_prompt), ("user", "{input}")]
+    )
+    
+    model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+    chain = prompt | model | JsonOutputParser()
+    
+    def tool_chain(model_output):
+        tool_map = {tool.name: tool for tool in tools}
+        print(model_output)
+        chosen_tool = tool_map[model_output["tool_use"]["name"]]
+        if "qa_engine" in chosen_tool.name:
+            def _parse_retreiver_inputs(model_output):
+                # tool_args = list(model_output["tool_use"]["arguments"].values())
+                # if len(tool_args) == 0:
+                #     return model_output["question"]["input"]
+                # return list(model_output["tool_use"]["arguments"].values())[0]
+                return model_output["question"]["input"]
+            return {"context": _parse_retreiver_inputs | chosen_tool, "input": RunnablePassthrough()} | summarization_llm_prompt | summarization_llm | output_parser
+        
+        return {"params": RunnableLambda(lambda x: x["tool_use"]["arguments"])} | chosen_tool | output_parser
+
+    runnable = RunnableParallel(
+        question=RunnablePassthrough(),
+        tool_use=chain
+    )
+    return runnable | tool_chain
+
+individual_qa_agent_executor_v2 = create_test_agent(tools=[individual_qa_tool, RegistrationStatusToolIndividual()])
+employing_unit_qa_agent_executor_v2 = create_test_agent(tools=[employing_unit_qa_tool, RegistrationStatusToolNonIndividual()])
+supervisory_department_qa_agent_executor_v2 = create_test_agent(tools=[supervisory_department_qa_tool, RegistrationStatusToolNonIndividual()])
+cont_edu_qa_agent_executor_v2 = create_test_agent(tools=[cont_edu_qa_tool, RegistrationStatusToolNonIndividual()])
+# import ipdb
+# ipdb.set_trace()
+
+# individual_qa_agent_executor_v2 = create_react_agent_with_memory(
+#     tools=[individual_qa_tool, RegistrationStatusToolIndividual()],
+#     prompt_str="""Your ONLY job is to use a tool to answer the following question.
+
+#         You MUST use a tool to answer the question. DO NOT answer the question directly.
+#         Simply Answer "您能提供更多关于这个问题的细节吗？" if you don't know the answer.
+#         DO NOT answer the question without using a tool.
+#         IF AND ONLY IF the user explicitly mentions they need help looking up registration status should you use the 专技个人注册状态查询工具 tool.
+#         If you think none of the tools are relevant, default to using individual_qa_engine.
+
+#         A few examples:
+#         - user: "我想知道我的注册状态", 调用 专技个人注册状态查询工具
+#         - user: "我不知道我注册了没有", 调用 专技个人注册状态查询工具
+#         - user: "怎么查看注册待审核信息", 调用 individual_qa_engine
+#         - user: "怎么审核？", 调用 individual_qa_engine
+#         - user: "有人社电话吗", 调用 individual_qa_engine
+
+
+#         Please keep your answers short and to the point.
+
+#         You have access to the following tools:
+
+#         {tools}
+
+#         Use the following format:
+
+#         Question: the input question you must answer
+#         Thought: you should always think about what to do.
+#         Action: the action to take, should be one of [{tool_names}]
+#         Action Input: the input to the action
+#         Observation: the result of the action
+#         ... (this Thought/Action/Action Input/Observation can repeat N times)
+#         Thought: I now know the final answer
+#         Final Answer: the final answer to the original input question
+
+#         Begin!
+
+#         {chat_history}
+#         Question: {input}
+#         Thought:{agent_scratchpad}
+#         """
+# )
+
+# employing_unit_qa_agent_executor_v2 = create_react_agent_with_memory(
+#     tools=[employing_unit_qa_tool, RegistrationStatusToolNonIndividual()],
+# )
+
+# supervisory_department_qa_agent_executor_v2 = create_react_agent_with_memory(
+#     tools=[supervisory_department_qa_tool, RegistrationStatusToolNonIndividual()],
+# )
+
+# cont_edu_qa_agent_executor_v2 = create_react_agent_with_memory(
+#     tools=[cont_edu_qa_tool, RegistrationStatusToolNonIndividual()],
+# )
 
 def check_role_qa_router(info):
     print(info["topic"])
