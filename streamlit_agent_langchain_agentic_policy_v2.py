@@ -53,6 +53,7 @@ from statics import (
 )
 from utils import (
     create_atomic_retriever_agent,
+    create_atomic_retriever_agent_single_tool_qa_map,
     create_dummy_agent,
     create_react_agent_with_memory,
     create_single_function_call_agent,
@@ -1078,7 +1079,7 @@ individual_qa_tool = create_retrieval_tool(
 )
 
 employing_unit_qa_tool = create_retrieval_tool(
-    "./policies_v2/employing_unit_qa.md",
+    "./policies_v2/employing_unit_q.md",
     "employing_unit_qa_engine",
     "回答用人单位用户的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1088,7 +1089,7 @@ employing_unit_qa_tool = create_retrieval_tool(
 )
 
 supervisory_department_qa_tool = create_retrieval_tool(
-    "./policies_v2/supervisory_dept_qa.md",
+    "./policies_v2/supervisory_dept_q.md",
     "supervisory_department_qa_engine",
     "回答主管部门用户的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1098,7 +1099,7 @@ supervisory_department_qa_tool = create_retrieval_tool(
 )
 
 cont_edu_qa_tool = create_retrieval_tool(
-    "./policies_v2/cont_edu_qa.md",
+    "./policies_v2/cont_edu_q.md",
     "cont_edu_qa_engine",
     "回答继续教育机构用户的相关问题，返回最相关的文档，如：",
     search_kwargs={"k": 3},
@@ -1128,7 +1129,7 @@ forgot_password_tool = create_retrieval_tool(
 
 # 济宁市
 jn_city_tool = create_retrieval_tool(
-    "./policies/jining/jining.md",
+    "./policies_v2/jining_q.md",
     "jn_city_engine",
     "回答有关济宁市报班缴费，在线学习和缴费的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1320,81 +1321,45 @@ update_user_role_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 
-merge_results_prompt = PromptTemplate.from_template(
-    """Answer the user's question based on the information provided below. The information contains the top 3 matches from the database, the first one has the highest matching score.
-
-You don't need to use all the information, some provided information could be irrelavant.
-Make the answer concise and clear.
-Try not to change the content too much.
-
-Information: {context}
-Question: {input}
-"""
-)
-
-merge_results_prompt.input_variables = ["context", "input"]
-
-merge_results_chain = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
-    prompt=merge_results_prompt,
-    verbose=True,
-)
-
-def merge_results(results):
-    with open('./policies_v2/individual_qa_map.json','r') as f:
-        qa_map = json.load(f)
-
-    print('!!!!!!')
-    print(results)
-    question_list = [res.strip() for res in results['output'].split('\n') if len(res.strip()) > 0]
-    print("length of the answer: ", len(question_list))
-    print(question_list)
-    merged_answers = '\n\n'.join([qa_map[q] for q in question_list])
-    print(merged_answers)
-    return {"context": RunnableLambda(lambda x: {"output": results}), "input": RunnablePassthrough()} | merge_results_chain
-
-def check_if_merge_result(results):
-    output_list = results['output'].split('\n')
-    if len(output_list) < 3:
-        return results
-    else:
-        return merge_results(results)
-
 # 常规问题咨询
-summarization_llm_prompt = PromptTemplate.from_template(
-    """ 你的任务是根据以下内容，回答用户的问题。如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
-    {context}
+# summarization_llm_prompt = PromptTemplate.from_template(
+#     """ 你的任务是根据以下内容，回答用户的问题。如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
+#     {context}
     
-    不要添加任何新的信息，只需要总结原文的内容并回答问题。
-    不要提供任何个人观点或者评论。
-    不要产生幻觉。
+#     不要添加任何新的信息，只需要总结原文的内容并回答问题。
+#     不要提供任何个人观点或者评论。
+#     不要产生幻觉。
 
-    请回答以下问题：
-    {input}
-    """
-)
-summarization_llm_prompt.input_variables = ["input"]
-summarization_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+#     请回答以下问题：
+#     {input}
+#     """
+# )
+# summarization_llm_prompt.input_variables = ["input"]
+# summarization_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
 
 individual_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[individual_qa_tool, RegistrationStatusToolIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/individual_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 employing_unit_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[employing_unit_qa_tool, RegistrationStatusToolNonIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/employing_unit_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 supervisory_department_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[supervisory_department_qa_tool, RegistrationStatusToolNonIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/supervisory_dept_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 cont_edu_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[cont_edu_qa_tool, RegistrationStatusToolNonIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/cont_edu_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 
 # individual_qa_agent_executor_v2 = create_react_agent_with_memory(
@@ -1478,8 +1443,9 @@ update_user_role_agent = create_atomic_retriever_agent(
 
         Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys. 'argument' value should be a json with the input to the tool.
         """,
-        summarization_llm=summarization_llm,
-        summarization_llm_prompt=summarization_llm_prompt,
+        qa_map_path = "./policies_v2/jining_qa_map.json"
+        # summarization_llm=summarization_llm,
+        # summarization_llm_prompt=summarization_llm_prompt,
 )
 
 # import ipdb
@@ -1493,7 +1459,7 @@ def check_role_qa_router(info):
         return update_user_role_agent
     elif "专技个人" in info["topic"]["output"].lower():
         print("entering 专技个人")
-        return individual_qa_agent_executor_v2 | RunnableLambda(check_if_merge_result)
+        return individual_qa_agent_executor_v2
     elif "用人单位" in info["topic"]["output"].lower():
         print("entering 用人单位")
         return employing_unit_qa_agent_executor_v2
@@ -1504,7 +1470,7 @@ def check_role_qa_router(info):
         print("entering 继续教育机构")
         return cont_edu_qa_agent_executor_v2
     print("默认进入专技个人")
-    return individual_qa_agent_executor_v2 | RunnableLambda(check_if_merge_result)
+    return individual_qa_agent_executor_v2
 
 
 def check_user_role(inputs):
@@ -1525,7 +1491,7 @@ check_user_role_chain = RunnableLambda(check_user_role)
 
 qa_chain_v2 = {
     "topic": check_user_role_chain,
-    "input": lambda x: x["input"],
+    "input": lambda x: x["input"], #?
 } | RunnableLambda(check_role_qa_router)
 
 # 登录问题咨询
@@ -1766,7 +1732,10 @@ check_registration_status_chain = {
 } | RunnableLambda(query_registration_status_route)
 
 # 济宁市
-jining_agent_executor = create_react_agent_with_memory(tools=[jn_city_tool])
+# jining_agent_executor = create_react_agent_with_memory(tools=[jn_city_tool])
+jining_agent_executor = create_atomic_retriever_agent_single_tool_qa_map(
+    jn_city_tool, 
+    qa_map_path = "./policies_v2/jining_qa_map.json")
 
 # When user input a number longer than 6 digits, use it as user id number in the context for the tool.
 # When the user input a four-digit number, use it as year in the context for the tool.
