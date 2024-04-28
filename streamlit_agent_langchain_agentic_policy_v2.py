@@ -1,3 +1,11 @@
+"""
+TODO:
+    1. Chain not able to get back to the starting point if seleting a role in the beginning (explore lang-graph). 
+    2. If similarity score is too low (asking irrellavant questions), answer can't answer.
+    3. Add causual chatbot.
+    4. Future data organization.
+
+"""
 from langchain.tools.render import render_text_description
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
