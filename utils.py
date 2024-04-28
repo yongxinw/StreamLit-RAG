@@ -93,16 +93,37 @@ def create_dummy_agent(dummy_message):
     )
     return dummy_agent_executor
 
+#     """Answer the user's question based on the context provided below. The context contains the top 3 matches from the database separated by changing lines, the first one has the highest matching score.
+
+# There are several rules:
+# 1. You should only select relavent part in the context to answer the question.
+# 2. Focus more on the top answer, you can drop the other answers if needed.
+# 3. You don't need to use all the information, some provided information could be irrelavant.
+# 4. Make the answer concise and clear.
+# 5. Try not to change the content too much.
+# 6. Don't hallucinate.
 
 merge_results_prompt = PromptTemplate.from_template(
-    """Answer the user's question based on the context provided below. The context contains the top 3 matches from the database, the first one has the highest matching score.
+    """ 你的任务是根据以下内容，回答用户的问题。以下内容包括问题匹配度最高的三组答案，第一组答案往往是最相关的，有时候其他答案也会有帮助。
+    如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
 
-You don't need to use all the information, some provided information could be irrelavant.
-Make the answer concise and clear.
-Try not to change the content too much.
-不要添加任何新的信息，只需要根据原文的内容并回答问题。
-不要提供任何个人观点或者评论。
-不要产生幻觉。
+    参考内容：{context}
+    
+    只需要在参考内容中选择相关的部分进行总结，可以舍弃不相关的部分。
+    不要添加任何新的信息，只需要总结原文的内容并回答问题。
+    不要提供任何个人观点或者评论。
+    不要产生幻觉。
+    回答尽可能的简单明了。
+
+For example, the quesntion is "学时对接到哪" and the context is:
+
+学时对接到哪 ： 本平台的学时只会对接到职称平台，也就是 山东省专业技术人员管理服务平台，不会对接地市等其他平台，建议您以本平台的学时为准
+
+怎么学时申报、学时申报怎么操作、如何学时申报 ： 登陆专技个人账号，进入【学时申报】，根据右侧页面的提示，填写相关信息，提交后，需要有单位审核通过后才可计入学时。
+
+会计网学的学时可以对接到省平台吗 ：本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。
+
+For the answer, you should only focus on the first answer.
 
 Context: {context}
 Question: {input}
