@@ -1,3 +1,6 @@
+import os
+import json
+import operator
 from langchain.agents import AgentExecutor, create_react_agent
 
 from langchain.memory import ConversationBufferMemory
@@ -7,9 +10,13 @@ from langchain_core.runnables import RunnableLambda, RunnablePassthrough, Runnab
 from langchain.tools.render import render_text_description
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains import LLMChain
+
 
 from statics import (COURSE_PURCHASES, CREDIT_HOURS, LOC_STR,
                      REGISTRATION_STATUS)
+
+os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
 
 
 def create_react_agent_with_memory(tools, prompt_str=None):
@@ -86,7 +93,46 @@ def create_dummy_agent(dummy_message):
     )
     return dummy_agent_executor
 
-def create_atomic_retriever_agent(tools, summarization_llm_prompt, summarization_llm, system_prompt=None):
+
+merge_results_prompt = PromptTemplate.from_template(
+    """Answer the user's question based on the context provided below. The context contains the top 3 matches from the database, the first one has the highest matching score.
+
+You don't need to use all the information, some provided information could be irrelavant.
+Make the answer concise and clear.
+Try not to change the content too much.
+不要添加任何新的信息，只需要根据原文的内容并回答问题。
+不要提供任何个人观点或者评论。
+不要产生幻觉。
+
+Context: {context}
+Question: {input}
+"""
+)
+
+merge_results_prompt.input_variables = ["context", "input"]
+
+merge_results_chain = LLMChain(
+    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    prompt=merge_results_prompt,
+    verbose=True,
+)
+
+def merge_results(inp):
+    results, qa_map_path = inp['results'], inp['qa_map_path']
+    with open(qa_map_path,'r') as f:
+        qa_map = json.load(f)
+
+    print('!!!!!!')
+    print(results)
+    question_list = [res.strip() for res in results.split('\n') if len(res.strip()) > 0]
+    print("length of the answer: ", len(question_list))
+    print(question_list)
+    merged_answers = '\n\n'.join([qa_map[q] for q in question_list])
+    print(merged_answers)
+    print("input: ", RunnablePassthrough())
+    return {"context": RunnableLambda(lambda x: {"output": merged_answers}), "input": RunnablePassthrough()} | merge_results_chain
+
+def create_atomic_retriever_agent(tools, qa_map_path, system_prompt=None):
 
     # rendered_tools = render_text_description([individual_qa_tool, RegistrationStatusToolIndividual()])
     rendered_tools = render_text_description(tools)
@@ -119,8 +165,14 @@ def create_atomic_retriever_agent(tools, summarization_llm_prompt, summarization
         chosen_tool = tool_map[model_output["tool_use"]["name"]]
         if "qa_engine" in chosen_tool.name:
             def _parse_retreiver_inputs(model_output):
+                print("~~~~~:", model_output)
                 return model_output["question"]["input"]
-            return {"context": _parse_retreiver_inputs | chosen_tool, "input": RunnablePassthrough()} | summarization_llm_prompt | summarization_llm | output_parser
+            def _parse_retreiver_outputs(model_output):
+                # model_output is a string with top k matches.
+                return {'results': model_output, 'qa_map_path': qa_map_path}
+            # print("~~~~~:", model_output)
+            return _parse_retreiver_inputs | chosen_tool | _parse_retreiver_outputs | RunnableLambda(merge_results) | output_parser_from_merged_results
+            # return {"context": _parse_retreiver_inputs | chosen_tool, "input": RunnablePassthrough()} | summarization_llm_prompt | summarization_llm | output_parser
         
         return {"params": RunnableLambda(lambda x: x["tool_use"]["arguments"])} | chosen_tool | output_parser
 
@@ -129,6 +181,21 @@ def create_atomic_retriever_agent(tools, summarization_llm_prompt, summarization
         tool_use=chain
     )
     return runnable | tool_chain
+
+
+def create_atomic_retriever_agent_single_tool_qa_map(tool, qa_map_path, system_prompt=None):
+    """Only run qa map with this function.
+    If you don't have extra request from the users but just retrieval, use this one.
+    """
+    def _parse_retreiver_outputs(model_output):
+        # model_output is a string with top k matches.
+        return {'results': model_output, 'qa_map_path': qa_map_path}
+
+    return RunnableLambda(lambda x: x["input"]) | tool | _parse_retreiver_outputs | RunnableLambda(merge_results) | output_parser_from_merged_results
+
+
+def output_parser_from_merged_results(model_output):
+    return {"output": model_output['text']}
 
 def output_parser(model_output):
     return {"output": model_output}

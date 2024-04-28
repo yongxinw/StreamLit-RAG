@@ -39,6 +39,7 @@ from langchain.tools.retriever import create_retriever_tool
 from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain_community.llms import Tongyi
 from langchain_community.vectorstores import FAISS
+from langchain_core.documents.base import Document
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
@@ -52,6 +53,7 @@ from statics import (
 )
 from utils import (
     create_atomic_retriever_agent,
+    create_atomic_retriever_agent_single_tool_qa_map,
     create_dummy_agent,
     create_react_agent_with_memory,
     create_single_function_call_agent,
@@ -1043,8 +1045,6 @@ def create_retrieval_tool(
     loader = UnstructuredMarkdownLoader(markdown_path)
     docs = loader.load()
 
-    print(docs)
-
     # Declare the embedding model
     embeddings = DashScopeEmbeddings(
         model="text-embedding-v2",
@@ -1058,20 +1058,16 @@ def create_retrieval_tool(
             allow_dangerous_deserialization=True,
         )
     else:
-        if separators is not None:
-            text_splitter = RecursiveCharacterTextSplitter(
-                # text_splitter = CharacterTextSplitter(
-                separators=["\n\n"],
-                # separators=["\n\n", "\n"], is_separator_regex=True
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-            )
-        else:
-            text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=chunk_size,
-                chunk_overlap=chunk_overlap,
-            )
-        documents = text_splitter.split_documents(docs)
+        #=============only split by separaters============
+        documents = []
+        all_content = docs[0].page_content
+        texts = [sentence for sentence in all_content.split("\n\n")]
+        meta_data = [docs[0].metadata] * len(texts)
+        for content, meta in zip(texts, meta_data):
+            new_doc = Document(page_content=content, metadata=meta)
+            documents.append(new_doc)
+
+        print(documents)
         vector = FAISS.from_documents(documents, embeddings)
 
         vector.save_local(f"./vector_store/{tool_name}.faiss")
@@ -1099,6 +1095,7 @@ def create_retrieval_tool(
     )
     # import ipdb
     # ipdb.set_trace()
+    registration_tool.return_direct=True
     if return_retriever:
         return registration_tool, retriever
     return registration_tool
@@ -1106,7 +1103,7 @@ def create_retrieval_tool(
 
 # CREATE RETRIEVERS
 individual_qa_tool = create_retrieval_tool(
-    "./policies_v2/individual_qa.md",
+    "./policies_v2/individual_q.md",
     "individual_qa_engine",
     "回答个人用户的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1116,7 +1113,7 @@ individual_qa_tool = create_retrieval_tool(
 )
 
 employing_unit_qa_tool = create_retrieval_tool(
-    "./policies_v2/employing_unit_qa.md",
+    "./policies_v2/employing_unit_q.md",
     "employing_unit_qa_engine",
     "回答用人单位用户的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1126,7 +1123,7 @@ employing_unit_qa_tool = create_retrieval_tool(
 )
 
 supervisory_department_qa_tool = create_retrieval_tool(
-    "./policies_v2/supervisory_dept_qa.md",
+    "./policies_v2/supervisory_dept_q.md",
     "supervisory_department_qa_engine",
     "回答主管部门用户的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1136,7 +1133,7 @@ supervisory_department_qa_tool = create_retrieval_tool(
 )
 
 cont_edu_qa_tool = create_retrieval_tool(
-    "./policies_v2/cont_edu_qa.md",
+    "./policies_v2/cont_edu_q.md",
     "cont_edu_qa_engine",
     "回答继续教育机构用户的相关问题，返回最相关的文档，如：",
     search_kwargs={"k": 3},
@@ -1166,7 +1163,7 @@ forgot_password_tool = create_retrieval_tool(
 
 # 济宁市
 jn_city_tool = create_retrieval_tool(
-    "./policies/jining/jining.md",
+    "./policies_v2/jining_q.md",
     "jn_city_engine",
     "回答有关济宁市报班缴费，在线学习和缴费的相关问题，返回最相关的文档",
     search_kwargs={"k": 3},
@@ -1359,40 +1356,44 @@ update_user_role_chain_executor = AgentExecutor.from_agent_and_tools(
 
 
 # 常规问题咨询
-summarization_llm_prompt = PromptTemplate.from_template(
-    """ 你的任务是根据以下内容，回答用户的问题。如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
-    {context}
+# summarization_llm_prompt = PromptTemplate.from_template(
+#     """ 你的任务是根据以下内容，回答用户的问题。如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
+#     {context}
     
-    不要添加任何新的信息，只需要总结原文的内容并回答问题。
-    不要提供任何个人观点或者评论。
-    不要产生幻觉。
+#     不要添加任何新的信息，只需要总结原文的内容并回答问题。
+#     不要提供任何个人观点或者评论。
+#     不要产生幻觉。
 
-    请回答以下问题：
-    {input}
-    """
-)
-summarization_llm_prompt.input_variables = ["input"]
-summarization_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+#     请回答以下问题：
+#     {input}
+#     """
+# )
+# summarization_llm_prompt.input_variables = ["input"]
+# summarization_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
 
 individual_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[individual_qa_tool, RegistrationStatusToolIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/individual_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 employing_unit_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[employing_unit_qa_tool, RegistrationStatusToolNonIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/employing_unit_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 supervisory_department_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[supervisory_department_qa_tool, RegistrationStatusToolNonIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/supervisory_dept_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 cont_edu_qa_agent_executor_v2 = create_atomic_retriever_agent(
     tools=[cont_edu_qa_tool, RegistrationStatusToolNonIndividual()],
-    summarization_llm=summarization_llm,
-    summarization_llm_prompt=summarization_llm_prompt,
+    qa_map_path = "./policies_v2/cont_edu_qa_map.json"
+    # summarization_llm=summarization_llm,
+    # summarization_llm_prompt=summarization_llm_prompt,
 )
 
 # individual_qa_agent_executor_v2 = create_react_agent_with_memory(
@@ -1476,13 +1477,13 @@ update_user_role_agent = create_atomic_retriever_agent(
 
         Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys. 'argument' value should be a json with the input to the tool.
         """,
-        summarization_llm=summarization_llm,
-        summarization_llm_prompt=summarization_llm_prompt,
+        qa_map_path = "./policies_v2/jining_qa_map.json"
+        # summarization_llm=summarization_llm,
+        # summarization_llm_prompt=summarization_llm_prompt,
 )
 
 # import ipdb
 # ipdb.set_trace()
-
 
 def check_role_qa_router(info):
     print(info["topic"])
@@ -1524,7 +1525,7 @@ check_user_role_chain = RunnableLambda(check_user_role)
 
 qa_chain_v2 = {
     "topic": check_user_role_chain,
-    "input": lambda x: x["input"],
+    "input": lambda x: x["input"], #?
 } | RunnableLambda(check_role_qa_router)
 
 # 登录问题咨询
@@ -1765,7 +1766,10 @@ check_registration_status_chain = {
 } | RunnableLambda(query_registration_status_route)
 
 # 济宁市
-jining_agent_executor = create_react_agent_with_memory(tools=[jn_city_tool])
+# jining_agent_executor = create_react_agent_with_memory(tools=[jn_city_tool])
+jining_agent_executor = create_atomic_retriever_agent_single_tool_qa_map(
+    jn_city_tool, 
+    qa_map_path = "./policies_v2/jining_qa_map.json")
 
 # When user input a number longer than 6 digits, use it as user id number in the context for the tool.
 # When the user input a four-digit number, use it as year in the context for the tool.
