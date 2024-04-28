@@ -19,11 +19,13 @@ import os
 
 # Load the content of the uploaded Markdown file to examine its format
 file_names  = [
-                # 'cont_edu_qa.md',
-                # 'individual_qa.md',
-                # 'supervisory_dept_qa.md',
+                'cont_edu_qa.md',
+                'individual_qa.md',
+                'supervisory_dept_qa.md',
                 'employing_unit_qa.md',
-                # 'jining_qa.md'
+                'jining_qa.md',
+                'login_problems_details_qa.md',
+                'forgot_password_qa.md'
                 ]
 
 root_path = 'policies_v2'
@@ -49,9 +51,9 @@ for file_name in file_names:
             # Process answer lines
             answer = line.strip()[3:]  # Remove '回复：' part
             if last_question:
-                qa_map[last_question_key] = f"{last_question_key} ： {answer}"
-                print(len(qa_map))
-                print('===============')
+                qa_map[last_question_key] = f"问题：{last_question_key}\t回复: {answer}"
+                # print(len(qa_map))
+                # print('===============')
         elif line.strip() and line.strip()[0].isdigit():
             # Process question lines
             last_question = line.strip()
@@ -59,7 +61,7 @@ for file_name in file_names:
             if last_question_key not in all_question_keys:
                 questions.append(last_question)
                 all_question_keys.append(last_question_key)
-                print(len(questions))
+                # print(len(questions))
 
     # Save the questions-only file
     output_q_name = '_'.join(file_name.split('_')[:-1]) + '_q.md'

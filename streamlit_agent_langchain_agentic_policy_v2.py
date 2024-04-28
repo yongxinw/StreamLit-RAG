@@ -1116,7 +1116,7 @@ individual_qa_tool = create_retrieval_tool(
     "./policies_v2/individual_q.md",
     "individual_qa_engine",
     "回答个人用户的相关问题，返回最相关的文档",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
     use_cached_faiss=True,
@@ -1126,7 +1126,7 @@ employing_unit_qa_tool = create_retrieval_tool(
     "./policies_v2/employing_unit_q.md",
     "employing_unit_qa_engine",
     "回答用人单位用户的相关问题，返回最相关的文档",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
     use_cached_faiss=True,
@@ -1136,7 +1136,7 @@ supervisory_department_qa_tool = create_retrieval_tool(
     "./policies_v2/supervisory_dept_q.md",
     "supervisory_department_qa_engine",
     "回答主管部门用户的相关问题，返回最相关的文档",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
     use_cached_faiss=True,
@@ -1146,7 +1146,7 @@ cont_edu_qa_tool = create_retrieval_tool(
     "./policies_v2/cont_edu_q.md",
     "cont_edu_qa_engine",
     "回答继续教育机构用户的相关问题，返回最相关的文档，如：",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
     use_cached_faiss=True,
@@ -1154,19 +1154,19 @@ cont_edu_qa_tool = create_retrieval_tool(
 
 
 login_problems_detail_tool = create_retrieval_tool(
-    "./policies/registration/login_problems_details.md",
+    "./policies_v2/login_problems_details_q.md",
     "login_problems_detail_engine",
     "回答用户登录问题的细节相关问题，返回最相关的文档，如：没有滑块，找不到滑块，登录为什么提示验证失败，哪里有滑块，密码错误，忘记密码，账号不存在，登录显示审核中",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
 )
 
 forgot_password_tool = create_retrieval_tool(
-    "./policies/registration/forgot_password.md",
+    "./policies_v2/forgot_password_q.md",
     "forgot_password_engine",
     "回答用户忘记密码的相关问题，返回最相关的文档，如：忘记密码怎么办，密码忘记了，找回密码，忘记密码手机号那里怎么是空的、手机号不显示、手机号怎么修改、手机号不用了，怎么找回、姓名或身份证号或所在单位有误、提示什么姓名错误、身份证号错误、所在单位有误、密码怎么保存不了、改密码怎么不行、改密码怎么保存不了、密码保存不了",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
 )
@@ -1176,7 +1176,7 @@ jn_city_tool = create_retrieval_tool(
     "./policies_v2/jining_q.md",
     "jn_city_engine",
     "回答有关济宁市报班缴费，在线学习和缴费的相关问题，返回最相关的文档",
-    search_kwargs={"k": 3},
+    search_kwargs={"k": 2},
     chunk_size=100,
     separators=["\n\n"],
 )
@@ -1465,30 +1465,44 @@ cont_edu_qa_agent_executor_v2 = create_atomic_retriever_agent(
 update_user_role_tools = [UpdateUserRoleTool2(), RegistrationStatusToolUniversal()]
 update_user_role_agent = create_atomic_retriever_agent(
     tools=update_user_role_tools,
-    system_prompt=f"""You are an assistant that has access to the following set of tools. Here are the names and descriptions for each tool:
+    system_prompt=f"""你是一个助手，可以使用以下工具。以下是每个工具的名称和描述：
 
         {render_text_description(update_user_role_tools)}
         
-        You need to classify whether the user needs help in checking their roles, if so, use {update_user_role_tools[1].name} to search the user role for them. 
-        If not, you need to determine whether the user's intention is to provide their role information. If so, use {update_user_role_tools[0].name} to update the user role. Otherwise ask: 您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）
+        ### 任务
+        根据用户的输入 input, 你需要将用户意图分类为 `查询用户角色` 或者 `提供用户角色信息` 或者 `其他`。
+        如果用户需要帮助查找他们的角色，请使用 {update_user_role_tools[1].name} 来搜索用户角色。
+        如果用户的意图是提供他们的角色信息，请使用 {update_user_role_tools[0].name} 来更新用户角色。
+        如果是`其他`，使用 {update_user_role_tools[0].name} 工具，将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        
+        用户角色为：专技个人、用人单位、主管部门、继续教育机构、跳过
+        注意：用户的问题可能包含角色，即使包含角色，用户的意图不一定是提供角色信息。因此，当包含角色时，你要更加小心的对用户的意图进行分类。
+        
+        最终返回需要调用的工具名称和输入。返回的响应应该是一个 JSON 数据，其中包含 'name' 和 'arguments' 键。'argument' 的值应该是一个 json，其中包含要传递给工具的输入。
 
-        A few examples below:
-        - user: "我想知道我的注册状态", 调用 {update_user_role_tools[1].name}
-        - user: "不知道啊，帮我查一下", 调用 {update_user_role_tools[1].name}
-        - user: "山东省济南市中心医院", 调用 {update_user_role_tools[1].name}
-        - user: "济宁市人才服务中心", 调用 {update_user_role_tools[1].name}
-        - user: "43942929391938222", 调用 {update_user_role_tools[1].name}
-        - user: "我是专技个人", 调用 {update_user_role_tools[0].name} 'arguments': '专技个人'
-        - user: "专技个人", 调用 {update_user_role_tools[0].name} 'arguments': '专技个人'
-        - user: "用人单位", 调用 {update_user_role_tools[0].name} 'arguments': '用人单位'
-        - user: "主管部门", 调用 {update_user_role_tools[0].name} 'arguments': '主管部门'
-        - user: "继续教育机构", 调用 {update_user_role_tools[0].name} 'arguments': '继续教育机构'
-        - user: "跳过", 调用 {update_user_role_tools[0].name} 'arguments': '跳过'
-        - user: "单位怎么学时申报", 调用 {update_user_role_tools[0].name} 'arguments': 'unknown'
-        - user: "单位的培训计划怎么审核", 调用 {update_user_role_tools[0].name} 'arguments': 'unknown'
+        ### 以下是一些示例：
+        #### 查询用户角色:
+        - "我想知道我的注册状态" -> 调用 {update_user_role_tools[1].name}, 将 'arguments' 中的 'user_id_number' 设置为 'unknown'。
+        - "不知道啊，帮我查一下" -> 调用 {update_user_role_tools[1].name}, 将 'arguments' 中的 'user_id_number' 设置为 'unknown'。
+        - "山东省济南市中心医院" -> 调用 {update_user_role_tools[1].name}, 将 'arguments' 中的 'user_id_number' 设置为 '山东省济南市中心医院'。
+        - "济宁市人才服务中心" -> 调用 {update_user_role_tools[1].name}, 将 'arguments' 中的 'user_id_number' 设置为 '济宁市人才服务中心'。
+        - "43942929391938222" -> 调用 {update_user_role_tools[1].name}, 将 'arguments' 中的 'user_id_number' 设置为 '43942929391938222'。
+        
+        #### 提供用户角色信息:
+        - "我是专技个人" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        - "专技个人" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 '专技个人'。
+        - "用人单位" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 '用人单位'。
+        - "主管部门" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 '主管部门'。
+        - "继续教育机构" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 '继续教育机构'。
+        - "跳过" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 '跳过'。
+        
+        #### 其他
+        - "继续教育机构如何注册" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        - "注册如何审核" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        - "专技个人注册如何审核" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        - "单位怎么学时申报" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        - "单位的培训计划怎么审核" -> 调用 {update_user_role_tools[0].name}, 将 'arguments' 中的 'user_role' 设置为 'unknown'。
 
-        Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys. 'argument' value should be a json with the input to the tool.
-        If the user's input is not exactly one of 专技个人，用人单位，主管部门，继续教育机构, set 'arguments' value to be 'unknown' for {update_user_role_tools[0].name}.
         """,
         qa_map_path = "./policies_v2/jining_qa_map.json"
         # summarization_llm=summarization_llm,
@@ -1543,10 +1557,10 @@ qa_chain_v2 = {
 
 # 登录问题咨询
 login_problem_classifier_prompt = PromptTemplate.from_template(
-    """Given the user input AND chat history below, classify whether the conversation topic or user mentioned being about `没有滑块` or `密码错误` or `账号不存在` or `审核中` or `手机网页无法登录` or `页面不全` or `无法登录`
+    """Given the user input AND chat history below, classify whether the conversation topic or user mentioned being about `没有滑块` or `密码错误` or `账号不存在` or `审核中` or `手机网页无法登录` or `页面不全` or `无法登录` or `验证失败`
 
-# Do not answer the question. Simply classify it as being related to `没有滑块` or `密码错误` or `账号不存在` or `审核中` or `手机网页无法登录` or `页面不全` or `无法登录`
-# Do not respond with anything other than `没有滑块` or `密码错误` or `账号不存在` or `审核中` or `手机网页无法登录` or `页面不全` or `无法登录`
+# Do not answer the question. Simply classify it as being related to `没有滑块` or `密码错误` or `账号不存在` or `审核中` or `手机网页无法登录` or `页面不全` or `无法登录` or `验证失败`
+# Do not respond with anything other than `没有滑块` or `密码错误` or `账号不存在` or `审核中` or `手机网页无法登录` or `页面不全` or `无法登录` or `验证失败`
 
 {chat_history}
 Question: {input}
@@ -1567,9 +1581,13 @@ login_problem_classifier_chain = LLMChain(
     verbose=True,
 )
 
-login_problem_agent_executor = create_react_agent_with_memory(
-    tools=[login_problems_detail_tool]
-)
+# login_problem_agent_executor = create_react_agent_with_memory(
+#     tools=[login_problems_detail_tool]
+# )
+
+login_problem_agent_executor = create_atomic_retriever_agent_single_tool_qa_map(
+    login_problems_detail_tool, 
+    qa_map_path = "./policies_v2/login_problems_details_qa_map.json")
 
 login_problem_ask_user_executor = LLMChain(
     llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
@@ -1604,6 +1622,9 @@ def login_problem_router(info):
         print("手机网页无法登录")
         return login_problem_agent_executor
     elif "页面不全" in info["topic"]["text"]:
+        print("页面不全")
+        return login_problem_agent_executor
+    elif "验证失败" in info["topic"]["text"]:
         print("页面不全")
         return login_problem_agent_executor
     elif "无法登录" in info["topic"]["text"]:
@@ -1643,9 +1664,13 @@ forgot_password_classifier_chain = LLMChain(
     verbose=True,
 )
 
-forgot_password_agent_executor = create_react_agent_with_memory(
-    tools=[forgot_password_tool]
-)
+# forgot_password_agent_executor = create_react_agent_with_memory(
+#     tools=[forgot_password_tool]
+# )
+
+forgot_password_agent_executor = create_atomic_retriever_agent_single_tool_qa_map(
+    forgot_password_tool, 
+    qa_map_path = "./policies_v2/forgot_password_qa_map.json")
 
 forgot_password_ask_user_executor = LLMChain(
     llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),

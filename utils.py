@@ -102,32 +102,59 @@ def create_dummy_agent(dummy_message):
 # 4. Make the answer concise and clear.
 # 5. Try not to change the content too much.
 # 6. Don't hallucinate.
+# 5. 如果用户的问题与提供的信息无关，请直接回答“不好意思，暂时没有找到相关问题的答案，正在为您转接人工客服。。。”。
 
 merge_results_prompt = PromptTemplate.from_template(
-    """ 你的任务是根据以下内容，回答用户的问题。以下内容包括问题匹配度最高的三组答案，第一组答案往往是最相关的，有时候其他答案也会有帮助。
-    如果用户提供了反馈或建议，请从 context 中提取最相关的回复话术，总结并回复。
+#     """Based on the provided information, directly answer the user's specific question "{input}" in Chinese. Select only the information directly related to the question for your response, ignoring any irrelevant details.
 
-    参考内容：{context}
+#     Reference content: {context}
+
+# Guidelines:
+# 1. Carefully read the user's question to understand the specific requirements.
+# 2. Choose only the information directly relevant to the question from the provided context.
+# 3. Ensure the answer is direct, concise, and focused on solving the problem.
+# 4. Responses should be in clear Chinese.
+# 5. If the provided content does not contain sufficient information to address the question, clearly state so in Chinese.
+
+# Example:
+# Question: “专技个人登录时，提示验证失败”
+# Reference content: “登录为什么提示验证失败：请不要使用电脑自带和IE浏览器，建议使用谷歌、360浏览器（极速模式）、搜狗等浏览器，正常页面是可以拖动向右箭头完成滑块验证的。审核中，提示‘您的账号正在审核中，审核通过才可登录平台’：您可根据提示点击‘查看审核部门’，输入姓名、身份证号、密码进行查看待审核信息，需要审核通过后才可以登录。”
+
+# The answer should be: “请不要使用电脑自带和IE浏览器，建议使用谷歌、360浏览器（极速模式）、搜狗等浏览器，正常页面是可以拖动向右箭头完成滑块验证的。”
+#     """
+    """根据提供的信息，直接回答用户的具体问题“{input}”。筛选出与问题直接相关的信息进行总结并回答，忽略不相关的部分。
+
+
+参考内容：{context}
+
+指南：
+1. 仔细阅读用户问题，明确问题的具体需求。
+2. 从参考内容中选择并总结只与问题直接相关的信息。
+3. 回答模仿人类客服语气，应直接、精简、有礼貌，并且专注于解决问题。
+4. 模仿人类客服语气，
+5. 使用清晰的中文。
+6. 如果提供的内容中没有足够信息解决问题，应明确指出，并提出下一步会对接人工客服。
+7. 大部分情况下第一个回答是最准确的。
+
+例如：
+问题：“专技个人登录时，提示验证失败”
+参考内容：“登录为什么提示验证失败：请不要使用电脑自带和IE浏览器，建议使用谷歌、360浏览器（极速模式）、搜狗等浏览器，正常页面是可以拖动向右箭头完成滑块验证的。审核中，提示‘您的账号正在审核中，审核通过才可登录平台’：您可根据提示点击‘查看审核部门’，输入姓名、身份证号、密码进行查看待审核信息，需要审核通过后才可以登录。”
+
+回答应该是：“请不要使用电脑自带和IE浏览器，建议使用谷歌、360浏览器（极速模式）、搜狗等浏览器，正常页面是可以拖动向右箭头完成滑块验证的。”
+    """
     
-    只需要在参考内容中选择相关的部分进行总结，可以舍弃不相关的部分。
-    不要添加任何新的信息，只需要总结原文的内容并回答问题。
-    不要提供任何个人观点或者评论。
-    不要产生幻觉。
-    回答尽可能的简单明了。
+    # """ 你的任务是根据以下内容，用中文总结并回答用户的问题 “{input}”。
+    # 如果用户提供了反馈或建议，请从参考内容中提取最相关的回复话术，总结并回复。
 
-For example, the quesntion is "学时对接到哪" and the context is:
-
-学时对接到哪 ： 本平台的学时只会对接到职称平台，也就是 山东省专业技术人员管理服务平台，不会对接地市等其他平台，建议您以本平台的学时为准
-
-怎么学时申报、学时申报怎么操作、如何学时申报 ： 登陆专技个人账号，进入【学时申报】，根据右侧页面的提示，填写相关信息，提交后，需要有单位审核通过后才可计入学时。
-
-会计网学的学时可以对接到省平台吗 ：本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。
-
-For the answer, you should only focus on the first answer.
-
-Context: {context}
-Question: {input}
-"""
+    # 参考内容：{context}
+    
+    # 只需要在参考内容中选择相关的部分进行总结，可以舍弃不相关的部分。
+    # 不要添加任何新的信息，只需要总结原文的内容并回答问题。
+    # 不要提供任何个人观点或者评论。
+    # 不要产生幻觉。
+    # 回答尽可能的简单明了。
+    # 用中文回答问题。
+# """
 )
 
 merge_results_prompt.input_variables = ["context", "input"]
