@@ -2246,10 +2246,10 @@ cannot_find_course_chain_executor = AgentExecutor.from_agent_and_tools(
 
 
 # MAIN ENTRY POINT
-main_question_classifier_template = """Given the user input AND the user input history below, classify whether the conversation topic or user mentioned being about `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `系统操作` or `修改信息` or `其他`.
+main_question_classifier_template = """Given the user input AND the user input history below, classify whether the conversation topic or user mentioned being about `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
 
-# Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `系统操作` or `修改信息` or `其他`.
-# Do not respond with anything other than `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `系统操作` or `修改信息` or `其他`.
+# Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
+# Do not respond with anything other than `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
 
 Here are a few examples:
 - If the user says "学时没显示", you should classify it as `学时没显示`
@@ -2259,6 +2259,7 @@ Here are a few examples:
 - If the user says "学时不对接", you should classify it as `学时没显示`
 - If the user says "学时不对", you should classify it as `学时有问题`
 - If the user says "学时对接", you should classify it as `学时对接`
+- If the user says "济宁市，如何补学", you should classify it as `济宁市`
 - If the user mentions "济宁市", you should classify it as related to `济宁市`.
 - If the user doesn't mention "济宁市", you should NEVER classify it as related to `济宁市`
 
@@ -2489,6 +2490,12 @@ def main_question_classifier_and_route(info):
         return qa_chain_v2
     if "其他" in info["topic"]["text"]:
         print("其他")
+        return qa_chain_v2
+    if "学时申报" in info["topic"]["text"]:
+        print("学时申报")
+        return qa_chain_v2
+    if "学时审核" in info["topic"]["text"]:
+        print("学时审核")
         return qa_chain_v2
     # if "查询注册状态" in info["topic"]["text"]:
     #     print("查询注册状态")
