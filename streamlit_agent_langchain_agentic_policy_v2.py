@@ -1,6 +1,7 @@
 """
 TODO:
     0. refactor code.
+    0. Update all the prompt to Chinese.
     1. Chain not able to get back to the starting point if seleting a role in the beginning (explore lang-graph). 
     2. If similarity score is too low (asking irrellavant questions), answer can't answer.
     3. Add causual chatbot.
@@ -261,6 +262,8 @@ class RegistrationStatusToolUniversal(BaseTool):
             except Exception:
                 return "抱歉，我还没有成功识别您的身份证号码，单位信用代码，或者单位名称，请指定"
         input = str(params_dict["user_id_number"])
+        if input in ["unknown", "未知"]:
+            return "抱歉，我还没有成功识别您的身份证号码，单位信用代码，或者单位名称，请指定"
         if REGISTRATION_STATUS.get(input) is not None:
             status = REGISTRATION_STATUS.get(input)
             ret_str = [f"{k}: {v}" for k, v in status.items()]
@@ -272,7 +275,7 @@ class RegistrationStatusToolUniversal(BaseTool):
             ret_str = [f"{k}: {v}" for k, v in status.items()]
             ret_str = "  \n".join(ret_str)
             return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
-        return f"很抱歉，根据您提供的{input}，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
+        return f"很抱歉，根据您提供的{input}，我没有找到任何注册信息，请确认您提供了正确的身份证号码，单位信用代码，或者单位名称"
 
 
 class RegistrationStatusToolNonIndividual(BaseTool):
@@ -1462,6 +1465,7 @@ cont_edu_qa_agent_executor_v2 = create_atomic_retriever_agent(
 # )
 
 # update_user_role_agent = create_single_function_call_agent(UpdateUserRoleTool2())
+# If not, you need to determine whether the user's intention is to provide their role information. If so, use {update_user_role_tools[0].name} to update the user role. Otherwise set "user_role" value to be 'unknown' for {update_user_role_tools[0].name} 'argument'
 update_user_role_tools = [UpdateUserRoleTool2(), RegistrationStatusToolUniversal()]
 update_user_role_agent = create_atomic_retriever_agent(
     tools=update_user_role_tools,
@@ -1470,25 +1474,26 @@ update_user_role_agent = create_atomic_retriever_agent(
         {render_text_description(update_user_role_tools)}
         
         You need to classify whether the user needs help in checking their roles, if so, use {update_user_role_tools[1].name} to search the user role for them. 
-        If not, you need to determine whether the user's intention is to provide their role information. If so, use {update_user_role_tools[0].name} to update the user role. Otherwise ask: 您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）
+        
 
         A few examples below:
-        - user: "我想知道我的注册状态", 调用 {update_user_role_tools[1].name}
-        - user: "不知道啊，帮我查一下", 调用 {update_user_role_tools[1].name}
-        - user: "山东省济南市中心医院", 调用 {update_user_role_tools[1].name}
-        - user: "济宁市人才服务中心", 调用 {update_user_role_tools[1].name}
-        - user: "43942929391938222", 调用 {update_user_role_tools[1].name}
-        - user: "我是专技个人", 调用 {update_user_role_tools[0].name} 'arguments': '专技个人'
-        - user: "专技个人", 调用 {update_user_role_tools[0].name} 'arguments': '专技个人'
-        - user: "用人单位", 调用 {update_user_role_tools[0].name} 'arguments': '用人单位'
-        - user: "主管部门", 调用 {update_user_role_tools[0].name} 'arguments': '主管部门'
-        - user: "继续教育机构", 调用 {update_user_role_tools[0].name} 'arguments': '继续教育机构'
-        - user: "跳过", 调用 {update_user_role_tools[0].name} 'arguments': '跳过'
-        - user: "单位怎么学时申报", 调用 {update_user_role_tools[0].name} 'arguments': 'unknown'
-        - user: "单位的培训计划怎么审核", 调用 {update_user_role_tools[0].name} 'arguments': 'unknown'
+        - user: "我想知道我的注册状态", 调用 {update_user_role_tools[1].name}, set 'user_id_number' value to be 'unknown' for {update_user_role_tools[1].name} 'argument'
+        - user: "不知道啊，帮我查一下", 调用 {update_user_role_tools[1].name}, set 'user_id_number' value to be 'unknown' for {update_user_role_tools[1].name} 'argument'
+        - user: "山东省济南市中心医院", 调用 {update_user_role_tools[1].name}, set 'user_id_number' value to be '山东省济南市中心医院' for {update_user_role_tools[1].name} 'argument'
+        - user: "济宁市人才服务中心", 调用 {update_user_role_tools[1].name}, set 'user_id_number' value to be '济宁市人才服务中心' for {update_user_role_tools[1].name} 'argument'
+        - user: "43942929391938222", 调用 {update_user_role_tools[1].name}, set 'user_id_number' value to be '43942929391938222' for {update_user_role_tools[1].name} 'argument'
+        - user: "我是专技个人", 调用 {update_user_role_tools[0].name}, set "user_role" value to be 'unknown' for {update_user_role_tools[0].name} 'argument'.
+        - user: "专技个人", 调用 {update_user_role_tools[0].name}, set "user_role" value to be '专技个人' for {update_user_role_tools[0].name} 'argument'.
+        - user: "用人单位", 调用 {update_user_role_tools[0].name}, set "user_role" value to be '用人单位' for {update_user_role_tools[0].name} 'argument'.
+        - user: "主管部门", 调用 {update_user_role_tools[0].name}, set "user_role" value to be '主管部门' for {update_user_role_tools[0].name} 'argument'.
+        - user: "继续教育机构", 调用 {update_user_role_tools[0].name}, set "user_role" value to be '继续教育机构' for {update_user_role_tools[0].name} 'argument'.
+        - user: "跳过", 调用 {update_user_role_tools[0].name}, set "user_role" value to be '跳过' for {update_user_role_tools[0].name} 'argument'.
+        - user: "单位怎么学时申报", 调用 {update_user_role_tools[0].name}, set "user_role" value to be 'unknown' for {update_user_role_tools[0].name} 'argument'.
+        - user: "单位的培训计划怎么审核", 调用 {update_user_role_tools[0].name}, set "user_role" value to be 'unknown' for {update_user_role_tools[0].name} 'argument'.
+        - user: "如何注册", 调用 {update_user_role_tools[0].name}, set "user_role" value to be 'unknown' for {update_user_role_tools[0].name} 'argument'.
 
         Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys. 'argument' value should be a json with the input to the tool.
-        If the user's input is not exactly one of 专技个人，用人单位，主管部门，继续教育机构, set 'arguments' value to be 'unknown' for {update_user_role_tools[0].name}.
+        UNLESS user input is exactly one of 专技个人，用人单位，主管部门，继续教育机构, set "user_role" value to be 'unknown' for {update_user_role_tools[0].name} 'argument'.
         """,
         qa_map_path = "./policies_v2/jining_qa_map.json"
         # summarization_llm=summarization_llm,
@@ -2016,6 +2021,8 @@ Otherwise, say 目前支持的学习方式是电脑浏览器或者手机微信�
 If the user's used the right method but still has problems, then say 建议清除浏览器或者微信缓存再试试
 If the user used the right method and 清除了缓存, then say，抱歉，您的问题涉及到测试，建议您联系平台的人工热线客服或者在线客服进行反馈
 
+Use Chinese to answer the questions.
+
 {chat_history}
 Question: {input}
 """
@@ -2053,6 +2060,8 @@ Based on the user's choice in Step 1,
 If the user's learning method belongs to 电脑浏览器 or 手机微信扫码, then say 请勿使用电脑和手机同时登录账号学习，也不要使用电脑或手机同时登录多人账号学习。
 If the user say 没有登录多个账号/没有同时登录 etc., say 建议您清除电脑浏览器或手机微信缓存，并修改平台登录密码后重新登录学习试试。
 
+Use Chinese to answer the questions.
+
 {chat_history}
 Question: {input}
 """
@@ -2086,6 +2095,9 @@ Step 2. Based on the user's choice in Step 1,
 If the user wants 公需课, then say 选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择对应年度的课程报名学习就可以。如果有考试，需要考试通过后才能计入对应年度的学时。
 If the user wants 专业课, say 选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择与您职称专业相符或者相关的课程进行报名，缴费后可以学习。专业课学完就可以计入对应年度的学时，无需考试。
 If the user wants both, then say 如果要报名公需课，选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择对应年度的课程报名学习就可以。如果有考试，需要考试通过后才能计入对应年度的学时。如果要报名专业课，选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择与您职称专业相符或者相关的课程进行报名，缴费后可以学习。专业课学完就可以计入对应年度的学时，无需考试。
+
+Use Chinese to answer the questions.
+
 {chat_history}
 Question: {input}
 """
@@ -2132,6 +2144,8 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
 Begin!
+
+Use Chinese to answer the questions.
 
 {chat_history}
 Question: {input}
@@ -2187,6 +2201,8 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
 Begin!
+
+Use Chinese to answer the questions.
 
 {chat_history}
 Question: {input}
