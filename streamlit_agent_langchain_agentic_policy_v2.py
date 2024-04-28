@@ -1470,7 +1470,7 @@ update_user_role_agent = create_atomic_retriever_agent(
         {render_text_description(update_user_role_tools)}
         
         You need to classify whether the user needs help in checking their roles, if so, use {update_user_role_tools[1].name} to search the user role for them. 
-        If not, use {update_user_role_tools[0].name} to ask user to provide their role information.
+        If not, you need to determine whether the user's intention is to provide their role information. If so, use {update_user_role_tools[0].name} to update the user role. Otherwise ask: 您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）
 
         A few examples below:
         - user: "我想知道我的注册状态", 调用 {update_user_role_tools[1].name}
@@ -1478,14 +1478,17 @@ update_user_role_agent = create_atomic_retriever_agent(
         - user: "山东省济南市中心医院", 调用 {update_user_role_tools[1].name}
         - user: "济宁市人才服务中心", 调用 {update_user_role_tools[1].name}
         - user: "43942929391938222", 调用 {update_user_role_tools[1].name}
-        - user: "我是专技个人", 调用 {update_user_role_tools[0].name}
-        - user: "专技个人", 调用 {update_user_role_tools[0].name}
-        - user: "用人单位", 调用 {update_user_role_tools[0].name}
-        - user: "主管部门", 调用 {update_user_role_tools[0].name}
-        - user: "继续教育机构", 调用 {update_user_role_tools[0].name}
-        - user: "跳过", 调用 {update_user_role_tools[0].name}
+        - user: "我是专技个人", 调用 {update_user_role_tools[0].name} 'arguments': '专技个人'
+        - user: "专技个人", 调用 {update_user_role_tools[0].name} 'arguments': '专技个人'
+        - user: "用人单位", 调用 {update_user_role_tools[0].name} 'arguments': '用人单位'
+        - user: "主管部门", 调用 {update_user_role_tools[0].name} 'arguments': '主管部门'
+        - user: "继续教育机构", 调用 {update_user_role_tools[0].name} 'arguments': '继续教育机构'
+        - user: "跳过", 调用 {update_user_role_tools[0].name} 'arguments': '跳过'
+        - user: "单位怎么学时申报", 调用 {update_user_role_tools[0].name} 'arguments': 'unknown'
+        - user: "单位的培训计划怎么审核", 调用 {update_user_role_tools[0].name} 'arguments': 'unknown'
 
         Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys. 'argument' value should be a json with the input to the tool.
+        If the user's input is not exactly one of 专技个人，用人单位，主管部门，继续教育机构, set 'arguments' value to be 'unknown' for {update_user_role_tools[0].name}.
         """,
         qa_map_path = "./policies_v2/jining_qa_map.json"
         # summarization_llm=summarization_llm,
