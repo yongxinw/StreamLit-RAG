@@ -1,3 +1,6 @@
+from typing import List
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
 import os
 import json
 import operator
@@ -266,3 +269,14 @@ def create_single_function_call_agent(tool, system_prompt=None):
     model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
     chain = prompt | model | JsonOutputParser()
     return chain | {"params": RunnableLambda(lambda x: x["arguments"])} | tool | output_parser
+
+def check_user_location(user_provided_location: str, locations: List[str]):
+    """ Check if the user_provided_location overlaps with the items in locations. Return the item with max overlap using fuzzy matching.
+    """
+    location_scores = {loc: fuzz.ratio(user_provided_location, loc) for loc in locations}
+    sorted_scores = sorted(location_scores.items(), key=operator.itemgetter(1), reverse=True)
+    filtered_scores = [(loc, score) for loc, score in sorted_scores if score > 0]
+    if len(filtered_scores) == 0:
+        return None
+    return filtered_scores[0][0]
+    

@@ -62,6 +62,7 @@ from statics import (
     REGISTRATION_STATUS_NON_IDV,
 )
 from utils import (
+    check_user_location,
     create_atomic_retriever_agent,
     create_atomic_retriever_agent_single_tool_qa_map,
     create_dummy_agent,
@@ -261,6 +262,8 @@ class RegistrationStatusToolUniversal(BaseTool):
             except Exception:
                 return "抱歉，我还没有成功识别您的身份证号码，单位信用代码，或者单位名称，请指定"
         input = str(params_dict["user_id_number"])
+        if input in ["unknown", "未知"]:
+            return "抱歉，我还没有成功识别您的身份证号码，单位信用代码，或者单位名称，请指定"
         if REGISTRATION_STATUS.get(input) is not None:
             status = REGISTRATION_STATUS.get(input)
             ret_str = [f"{k}: {v}" for k, v in status.items()]
@@ -471,107 +474,6 @@ class CheckUserRoleTool(BaseTool):
         return result
 
 
-class CheckUserLocTool(BaseTool):
-    """根据用户回答，检查用户学习的地市"""
-
-    name: str = "检查用户地市工具"
-    description: str = "用于检查用户地市，无需输入参数 "
-    # args_schema: Type[BaseModel] = CalculatorInput
-    return_direct: bool = True
-
-    def _run(self, params) -> Any:
-        print(params)
-        template = credit_problem_chain_executor.agent.runnable.get_prompts()[
-            0
-        ].template.lower()
-        # print(template)
-        start_index = template.find("user location: ") + len("user location: ")
-        end_index = template.find("\n", start_index)
-        result = template[start_index:end_index].strip()
-        # result = st.session_state.get("user_role", "unknown")
-        return result
-
-
-class UpdateUserLocTool(BaseTool):
-    """根据用户回答，更新用户学习地市"""
-
-    name: str = "用户学习地市更新工具"
-    description: str = (
-        "用于更新用户学习地市，需要指通过 json 指定用户学习地市 user_location "
-    )
-    # args_schema: Type[BaseModel] = CalculatorInput
-    return_direct: bool = True
-
-    # def _run(self, a: int, b: int, run_manager: Optional[CallbackManagerForToolRun] = None) -> Any:
-    def _run(self, params) -> Any:
-        print(params)
-        try:
-            params_dict = json.loads(params)
-        except json.JSONDecodeError:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        if "user_location" not in params_dict:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        user_location = params_dict["user_location"]
-        if user_location is None:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        if user_location == "unknown":
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        if user_location not in LOC_STR:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        # if user_location not in LOC_STR:
-        #     return "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n" + LOC_STR
-        credit_problem_chain_executor.agent.runnable.get_prompts()[0].template = (
-            """Use a tool to answer the user's qustion.
-
-You MUST use a tool and generate a response based on tool's output.
-When user input a number longer than 6 digits, use it as user id number in the context for the tool.
-When the user input a four-digit number, use it as year in the context for the tool.
-DO NOT hallucinate!!!!
-                                                     
-user location: """
-            + user_location
-            + """
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do.
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-{chat_history}
-Question: {input}
-Thought:{agent_scratchpad}
-"""
-        )
-        # st.session_state.user_role = user_role
-        return f"谢谢，已为您更新您的学习地市为{user_location}, 现在请您提供身份证号码，以便我查询您的学时状态。"
-
-
 class UpdateUserLocTool2(BaseTool):
     """根据用户回答，更新用户学习地市"""
 
@@ -630,11 +532,11 @@ class UpdateUserLocTool2(BaseTool):
                 "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
                 + LOC_STR
             )
-        if user_location not in LOC_STR and user_location not in ["开放大学", "蟹壳云学", "专技知到"]:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
+        # if user_location not in LOC_STR and user_location not in ["开放大学", "蟹壳云学", "专技知到"]:
+        #     return (
+        #         "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
+        #         + LOC_STR
+        #     )
         # if user_location not in LOC_STR:
         #     return "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n" + LOC_STR
         credit_problem_chain_executor.agent.runnable.get_prompts()[0].template = (
@@ -743,24 +645,49 @@ class CheckUserCreditTool(BaseTool):
 
         user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
 
-        if user_provided_loc not in user_loc and user_loc not in user_provided_loc:
-            if user_provided_loc in [
+        match_location = check_user_location(user_provided_loc, [user_loc])
+        if match_location is not None:
+            match_other_loc = check_user_location(user_provided_loc, [
                 "开放大学",
                 "蟹壳云学",
                 "专技知到",
                 "文旅厅",
                 "教师",
-            ]:
+            ])
+            if match_other_loc is not None:
+                if match_other_loc == "文旅厅":
+                    return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
                 return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
             return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
+        # if user_provided_loc not in user_loc and user_loc not in user_provided_loc:
+        #     match_other_loc = check_user_location(user_provided_loc, [
+        #         "开放大学",
+        #         "蟹壳云学",
+        #         "专技知到",
+        #         "文旅厅",
+        #         "教师",
+        #     ])
+        #     if match_other_loc is not None:
+        #         if user_provided_loc == "文旅厅":
+        #             return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+        #         return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
+        #     return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
         else:
-            if user_provided_loc in [
+            # if user_provided_loc in [
+            #     "开放大学",
+            #     "蟹壳云学",
+            #     "专技知到",
+            #     "文旅厅",
+            #     "教师",
+            # ]:
+            match_other_loc = check_user_location(user_provided_loc, [
                 "开放大学",
                 "蟹壳云学",
                 "专技知到",
                 "文旅厅",
                 "教师",
-            ]:
+            ])
+            if match_other_loc is not None:
                 return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
             hours = CREDIT_HOURS.get(user_id_number)
             if hours is None:
@@ -956,15 +883,15 @@ class RefundTool(BaseTool):
         if "user_id_number" not in params_dict:
             return "麻烦您提供一下您的身份证号"
         if len(params_dict["user_id_number"]) < 2:
-            return "身份证号似乎不太对，麻烦您提供一下您正确的身份证号"
+            return "麻烦您提供一下您正确的身份证号"
         if "year" not in params_dict:
             return "您问的是哪个年度的课程？如：2019年"
         if len(params_dict["year"]) < 4:
-            return "年度似乎不太对，麻烦您确认你的课程年度。如：2019年"
+            return "您问的是哪个年度的课程？如：2019年"
         if "course_name" not in params_dict:
             return "您问的课程名称是什么？如：新闻专业课培训班"
         if len(params_dict["course_name"]) < 2:
-            return "课程名称似乎不太对，请您提供您想要查询的课程的正确名称。如：新闻专业课培训班"
+            return "您问的课程名称是什么？如：新闻专业课培训班"
 
         user_id_number = params_dict["user_id_number"]
 
@@ -1081,10 +1008,6 @@ def create_retrieval_tool(
         vector = FAISS.from_documents(documents, embeddings)
 
         vector.save_local(f"./vector_store/{tool_name}.faiss")
-    # if "login_problems" in markdown_path:
-    #     import ipdb
-
-    #     ipdb.set_trace()
     # Create a retriever tool
     if search_kwargs is None:
         retriever = vector.as_retriever()
@@ -1103,8 +1026,7 @@ def create_retrieval_tool(
         name=tool_name,
         description=tool_description,
     )
-    # import ipdb
-    # ipdb.set_trace()
+    
     registration_tool.return_direct=True
     if return_retriever:
         return registration_tool, retriever
@@ -1509,8 +1431,6 @@ update_user_role_agent = create_atomic_retriever_agent(
         # summarization_llm_prompt=summarization_llm_prompt,
 )
 
-# import ipdb
-# ipdb.set_trace()
 
 def check_role_qa_router(info):
     print(info["topic"])
@@ -1715,93 +1635,7 @@ forgot_password_chain = {
 } | RunnableLambda(forgot_password_router)
 
 # 查询注册信息
-individual_check_registration_status_agent = create_react_agent_with_memory(
-    tools=[RegistrationStatusToolIndividual()],
-    prompt_str="""Your job is to use a tool to answer the following question.
 
-        You MUST use a tool to answer the question. 
-        If the user hasn't provided 身份证号，you MUST ask the user for that information.
-        Try to answer the question as much as you can, but YOU MUST use a tool to answer the question.
-        DO NOT answer the question without using a tool.
-
-        Current user role is unknown.
-
-        You have access to the following tools:
-
-        {tools}
-
-        Use the following format:
-
-        Question: the input question you must answer
-        Thought: you should always think about what to do.
-        Action: the action to take, should be one of [{tool_names}]
-        Action Input: the input to the action
-        Observation: the result of the action
-        ... (this Thought/Action/Action Input/Observation can repeat N times)
-        Thought: I now know the final answer
-        Final Answer: the final answer to the original input question
-
-        Begin!
-
-        {chat_history}
-        Question: {input}
-        Thought:{agent_scratchpad}
-        """,
-)
-non_individual_check_registration_status_agent = create_react_agent_with_memory(
-    tools=[RegistrationStatusToolNonIndividual()],
-    prompt_str="""Your ONLY job is to use a tool to answer the following question.
-
-        You MUST use a tool to answer the question. 
-        If the user hasn't provided 管理员身份证号、单位名称、统一信用代码，you MUST ask the user for that information.
-        Try to answer the question as much as you can, but YOU MUST use a tool to answer the question.
-        DO NOT answer the question without using a tool.
-
-        Current user role is unknown.
-
-        You have access to the following tools:
-
-        {tools}
-
-        Use the following format:
-
-        Question: the input question you must answer
-        Thought: you should always think about what to do.
-        Action: the action to take, should be one of [{tool_names}]
-        Action Input: the input to the action
-        Observation: the result of the action
-        ... (this Thought/Action/Action Input/Observation can repeat N times)
-        Thought: I now know the final answer
-        Final Answer: the final answer to the original input question
-
-        Begin!
-
-        {chat_history}
-        Question: {input}
-        Thought:{agent_scratchpad}
-        """,
-)
-
-
-def query_registration_status_route(info):
-    print(info["topic"])
-    if "unknown" in info["topic"]["output"].lower():
-        return update_user_role_chain_executor
-    elif "专技个人" in info["topic"]["output"].lower():
-        return individual_check_registration_status_agent
-    elif "用人单位" in info["topic"]["output"].lower():
-        return non_individual_check_registration_status_agent
-    elif "主管部门" in info["topic"]["output"].lower():
-        return non_individual_check_registration_status_agent
-    elif "继续教育机构" in info["topic"]["output"].lower():
-        return non_individual_check_registration_status_agent
-    return main_qa_agent_executor
-
-
-check_registration_status_chain = {
-    "topic": check_user_role_router_chain_executor,
-    "input": lambda x: x["input"],
-} | RunnableLambda(query_registration_status_route)
 
 # 济宁市
 # jining_agent_executor = create_react_agent_with_memory(tools=[jn_city_tool])
@@ -1878,118 +1712,7 @@ credit_problem_chain_executor = AgentExecutor.from_agent_and_tools(
     handle_parsing_errors=True,
 )
 
-# check user location
-# check_user_loc_router_prompt = hub.pull("hwchase17/react")
-check_user_loc_router_prompt = PromptTemplate.from_template(
-    """Your ONLY job is to use the provided tools to determine the user location. DO NOT Answer the question without using a tool. DO NOT make prediction based on input question.
-
-NO MATTER WHAT, use a tool to find out the user location.
-ALWAYS use a tool to check the user location.
-You MUST use a tool to find out the user location.
-When user provide a location, use the right tool to update user location.
-DO NOT hallucinate!!!!
-
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you will not answer
-Thought: you should always think about what to do.
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-
-Question: {input}
-Thought:{agent_scratchpad}
-user role:
-"""
-)
-check_user_loc_router_prompt.input_variables = [
-    "agent_scratchpad",
-    "input",
-    "tool_names",
-    "tools",
-]
-
-check_user_loc_router_tools = [CheckUserLocTool(), UpdateUserLocTool()]
-
-check_user_loc_router_chain = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
-    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
-    check_user_loc_router_tools,
-    check_user_loc_router_prompt,
-)
-check_user_loc_router_chain_executor = AgentExecutor.from_agent_and_tools(
-    agent=check_user_loc_router_chain,
-    tools=check_user_loc_router_tools,
-    verbose=True,
-    handle_parsing_errors=True,
-)
-
 # update user location agent
-# update_user_location_prompt = hub.pull("hwchase17/react")
-update_user_location_prompt = PromptTemplate.from_template(
-    """Your ONLY job is to ask the user to provide their location information regardless of the input.
-
-You MUST ALWAYS say: 请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"""
-    + LOC_STR
-    + """
-
-You MUST use a tool to update user role.
-DO NOT hallucinate!!!!
-
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do.
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-
-Question: {input}
-Thought:{agent_scratchpad}
-"""
-)
-update_user_location_prompt.input_variables = [
-    "agent_scratchpad",
-    "input",
-    "tool_names",
-    "tools",
-]
-
-update_user_location_tools = [UpdateUserLocTool()]
-
-update_user_location_chain = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
-    # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
-    update_user_location_tools,
-    update_user_location_prompt,
-)
-update_user_location_chain_executor = AgentExecutor.from_agent_and_tools(
-    agent=update_user_location_chain,
-    tools=update_user_location_tools,
-    verbose=True,
-    handle_parsing_errors=True,
-)
-
 update_user_location_agent = create_single_function_call_agent(UpdateUserLocTool2())
 
 
@@ -2015,10 +1738,6 @@ def check_user_loc(inputs):
     # result = st.session_state.get("user_role", "unknown")
     inputs["output"] = result
     return inputs
-
-
-# def parse_result(inputs):
-#     return {"topic": inputs}
 
 check_loc_chain = RunnableLambda(check_user_loc)
 
@@ -2078,6 +1797,8 @@ Based on the user's choice in Step 1,
 If the user's learning method belongs to 电脑浏览器 or 手机微信扫码, then say 请勿使用电脑和手机同时登录账号学习，也不要使用电脑或手机同时登录多人账号学习。
 If the user say 没有登录多个账号/没有同时登录 etc., say 建议您清除电脑浏览器或手机微信缓存，并修改平台登录密码后重新登录学习试试。
 
+Answer the question in Chinese.
+
 {chat_history}
 Question: {input}
 """
@@ -2111,6 +1832,9 @@ Step 2. Based on the user's choice in Step 1,
 If the user wants 公需课, then say 选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择对应年度的课程报名学习就可以。如果有考试，需要考试通过后才能计入对应年度的学时。
 If the user wants 专业课, say 选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择与您职称专业相符或者相关的课程进行报名，缴费后可以学习。专业课学完就可以计入对应年度的学时，无需考试。
 If the user wants both, then say 如果要报名公需课，选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择对应年度的课程报名学习就可以。如果有考试，需要考试通过后才能计入对应年度的学时。如果要报名专业课，选择【济宁职业技术学院】这个平台，进入【选课中心】，先选择【培训年度】，再选择与您职称专业相符或者相关的课程进行报名，缴费后可以学习。专业课学完就可以计入对应年度的学时，无需考试。
+
+Answer the question in Chinese.
+
 {chat_history}
 Question: {input}
 """
@@ -2213,6 +1937,8 @@ Final Answer: the final answer to the original input question
 
 Begin!
 
+Answer the question in Chinese.
+
 {chat_history}
 Question: {input}
 Thought:{agent_scratchpad}
@@ -2246,28 +1972,56 @@ cannot_find_course_chain_executor = AgentExecutor.from_agent_and_tools(
 
 
 # MAIN ENTRY POINT
-main_question_classifier_template = """Given the user input AND the user input history below, classify whether the conversation topic or user mentioned being about `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
+# main_question_classifier_template = """Given the user input AND the user input history below, classify whether the conversation topic or user mentioned being about `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
 
-# Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
-# Do not respond with anything other than `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
+# # Do not answer the question. Simply classify it as being related to `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
+# # Do not respond with anything other than `学时没显示` or `学时有问题` or `济宁市：如何报班、报名` or `济宁市：课程进度` or `济宁市：多个设备，其他地方登录` or `济宁市：课程退款退费，课程买错了` or `济宁市：课程找不到，课程没有了` or `无法登录` or `忘记密码` or `找回密码` or `济宁市` or `注册` or `审核` or `学时对接` or `学时申报` or `学时审核` or `系统操作` or `修改信息` or `其他`.
 
-Here are a few examples:
-- If the user says "学时没显示", you should classify it as `学时没显示`
-- If the user says "学时有问题", you should classify it as `学时有问题`
-- If the user says "学时没对接", you should classify it as `学时没显示`
-- If the user says "学时没对接", you should classify it as `学时没显示`
-- If the user says "学时不对接", you should classify it as `学时没显示`
-- If the user says "学时不对", you should classify it as `学时有问题`
-- If the user says "学时对接", you should classify it as `学时对接`
-- If the user says "济宁市，如何补学", you should classify it as `济宁市`
-- If the user mentions "济宁市", you should classify it as related to `济宁市`.
-- If the user doesn't mention "济宁市", you should NEVER classify it as related to `济宁市`
+# Here are a few examples:
+# - If the user says "学时没显示", you should classify it as `学时没显示`
+# - If the user says "学时有问题", you should classify it as `学时有问题`
+# - If the user says "学时没对接", you should classify it as `学时没显示`
+# - If the user says "学时没对接", you should classify it as `学时没显示`
+# - If the user says "学时不对接", you should classify it as `学时没显示`
+# - If the user says "学时不对", you should classify it as `学时有问题`
+# - If the user says "学时对接", you should classify it as `学时对接`
+# - If the user says "济宁市，如何补学", you should classify it as `济宁市`
+# - If the user mentions "济宁市", you should classify it as related to `济宁市`.
+# - If the user doesn't mention "济宁市", you should NEVER classify it as related to `济宁市`
 
+
+# {chat_history}
+# Question: {input}
+
+# Classification:"""
+
+main_question_classifier_template = """根据用户的输入 input 以及对话历史记录 chat_history，判定用户问的内容属于以下哪一类： `学时没显示` 或者 `学时有问题` 或者 `济宁市：如何报班、报名` 或者 `济宁市：课程进度` 或者 `济宁市：多个设备，其他地方登录` 或者 `济宁市：课程退款退费，课程买错了` 或者 `济宁市：课程找不到，课程没有了` 或者 `无法登录` 或者 `忘记密码` 或者 `找回密码` 或者 `济宁市` 或者 `注册` 或者 `审核` 或者 `学时对接` 或者 `学时申报` 或者 `学时审核` 或者 `系统操作` 或者 `修改信息` 或者 `其他`.
+
+# 不要回答用户的问题。仅把用户的问题归类为 `学时没显示` 或 `学时有问题` 或 `济宁市：如何报班、报名` 或 `济宁市：课程进度` 或 `济宁市：多个设备，其他地方登录` 或 `济宁市：课程退款退费，课程买错了` 或 `济宁市：课程找不到，课程没有了` 或 `无法登录` 或 `忘记密码` 或 `找回密码` 或 `济宁市` 或 `注册` 或 `审核` 或 `学时对接` 或 `学时申报` 或 `学时审核` 或 `系统操作` 或 `修改信息` 或 `其他`.
+# 不要回答除此之外的任何内容。
+
+以下是一些例子：
+- "学时没显示" -> 分类为 `学时没显示`
+- "学时有问题" -> 分类为 `学时有问题`
+- "学时没对接" -> 分类为 `学时没显示`
+- "学时没对接" -> 分类为 `学时没显示`
+- "学时不对接" -> 分类为 `学时没显示`
+- "学时不对" -> 分类为 `学时有问题`
+- "学时对接" -> 分类为 `学时对接`
+- "济宁市，如何补学" -> 分类为 `济宁市`
+
+注意：
+如果用户提到了 "济宁市"，你应该将其分类为与 `济宁市` 相关。如果用户没有提到 "济宁市"，你绝对不能将其分类为与 `济宁市` 相关。
+如果用户提到了以下具体的济宁市问题，你应该将其分类到济宁市具体的问题中。
+- "济宁市：课程进度" -> 分类为 `济宁市：课程进度`
+- "济宁市：多个设备，其他地方登录" -> 分类为 `济宁市：多个设备，其他地方登录`
+- "济宁市：课程退款退费，课程买错了" -> 分类为 `济宁市：课程退款退费，课程买错了`
+- "济宁市：课程找不到，课程没有了" -> 分类为 `济宁市：课程找不到，课程没有了`
 
 {chat_history}
 Question: {input}
 
-# Classification:"""
+Classification:"""
 
 main_question_classifier_prompt = PromptTemplate(
     input_variables=["input", "chat_history"],
@@ -2285,99 +2039,47 @@ main_question_classifier = LLMChain(
     verbose=True,
 )
 
+# - If the user says "学时没显示", you should classify it as `学时没显示`
+# - If the user says "学时有问题", you should classify it as `学时有问题`
+# - If the user says "学时没对接", you should classify it as `学时没显示`
+# - If the user says "学时没对接", you should classify it as `学时没显示`
+# - If the user says "学时不对接", you should classify it as `学时没显示`
+# - If the user says "学时不对", you should classify it as `学时有问题`
+# - If the user says "学时对接", you should classify it as `学时对接`
+# - If the user says "济宁市，如何补学", you should classify it as `济宁市`
+# - If the user mentions "济宁市", you should classify it as related to `济宁市`.
+# - If the user doesn't mention "济宁市", you should NEVER classify it as related to `济宁市`
 
-from operator import itemgetter
-from typing import Dict, List
+intent_classifier_template = """给定用户输入，判断用户的目的是否是提供用户角色信息，回答 `是` 或 `否`。
 
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import Runnable, RunnablePassthrough
-from langchain_core.tools import tool
-from langchain_community.chat_models.tongyi import ChatTongyi
-from langchain.tools.render import render_text_description
-from langchain_core.output_parsers import JsonOutputParser
+不要回答用户的问题。仅把用户的问题归类为 `是` 或 `否`。不要回答除此之外的任何内容。
 
+用户角色为：专技个人、用人单位、主管部门、继续教育机构、跳过
 
-llm = ChatTongyi()
+注意：用户的问题可能包含角色，即使包含角色，用户的意图不一定是提供角色信息。因此，当包含角色时，你要更加小心的对用户的意图进行分类。
 
+# 以下是一些例子：
 
-# llm = ChatOpenAI(model="gpt-3.5-turbo-0125", api_key="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")
-@tool
-def count_emails(last_n_days: int) -> int:
-    """Multiply two integers together."""
-    return last_n_days * 2
+问题: {input}
 
+Classification:"""
 
-rendered_tools = render_text_description([count_emails])
-
-from langchain_core.prompts import ChatPromptTemplate
-
-system_prompt = f"""You are an assistant that has access to the following set of tools. Here are the names and descriptions for each tool:
-
-{rendered_tools}
-
-Given the user input, return the name and input of the tool to use. Return your response as a JSON blob with 'name' and 'arguments' keys."""
-
-prompt = ChatPromptTemplate.from_messages(
-    [("system", system_prompt), ("user", "{input}")]
+intent_classifier_prompt = PromptTemplate(
+    input_variables=["input", "chat_history"],
+    template=intent_classifier_template,
 )
 
+intent_classifier_mem = ConversationBufferMemory(
+    memory_key="chat_history", input_key="input"
+)
 
-def parse(ai_message) -> dict:
-    """Parse the AI message."""
-    return {"output": "output"}
+intent_classifier = LLMChain(
+    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    prompt=intent_classifier_prompt,
+    memory=intent_classifier_mem,
+    verbose=True,
+)
 
-
-# def human_approval(msg: AIMessage) -> Runnable:
-#     # tool_strs = "\n\n".join(
-#     #     json.dumps(tool_call, indent=2) for tool_call in msg.tool_calls
-#     # )
-#     print(f"msg: {msg}")
-#     input_msg = "can you provide me with some numbers?"
-#     st.write(input_msg)
-#     # resp = input(input_msg)
-#     # while "input" not in st.session_state:
-#     #     resp = st.text_input("can you provide me with some numbers?")
-#     #     if resp:
-#     #         st.session_state["input"] = resp
-#     # if resp.lower() not in ("yes", "y"):
-#         # raise ValueError(f"Tool invocations not approved:\n\n{tool_strs}")
-#         # raise ValueError(f"didn't provide the right answer")
-#         # return intro_dialogue
-#     return msg
-if "user_approved" not in st.session_state:
-    st.session_state.user_approved = None
-
-
-def human_approval(msg):
-    if st.session_state.user_approved is None:
-        approve = st.button("Approve")
-        disapprove = st.button("Disapprove")
-
-        if approve:
-            st.session_state.user_approved = True
-        elif disapprove:
-            st.session_state.user_approved = False
-
-        st.stop()
-        # return msg
-    else:
-        if st.session_state.user_approved:
-            st.write("User approved the action. Continuing execution...")
-            # Execution continues here
-            # return msg
-        else:
-            st.write("User disapproved the action. Stopping execution...")
-            st.session_state.user_approved = None  # Reset for future approvals
-            st.stop()
-
-
-test_chain = prompt | llm | JsonOutputParser() | human_approval
-# chain.invoke({"input": "what's thirteen times 4"})
-
-
-# test_chain = llm_with_tools | call_tools
-# test_chain.invoke("how many emails did i get in the last 5 days?")
 
 if "topic" not in st.session_state:
     st.session_state.topic = None
@@ -2528,22 +2230,13 @@ full_chain = {
     "input": lambda x: x["input"],
 } | RunnableLambda(main_question_classifier_and_route)
 
-# import ipdb
-# ipdb.set_trace()
-
 if "chat_engine" not in st.session_state.keys():  # Initialize the chat engine
-    # st.session_state.chat_engine = index.as_chat_engine(
-    #     chat_mode="condense_question", verbose=True
-    # )
     st.session_state.chat_engine = full_chain
 
 if prompt := st.chat_input(
     "您的问题"
 ):  # Prompt for user input and save to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
-    # st.session_state.chat_engine.memory.add_message(
-    #     {"role": "user", "content": prompt}
-    # )
 
 for message in st.session_state.messages:  # Display the prior chat messages
     with st.chat_message(message["role"]):
@@ -2553,13 +2246,8 @@ for message in st.session_state.messages:  # Display the prior chat messages
 if st.session_state.messages[-1]["role"] != "assistant":
     with st.chat_message("assistant"):
         with st.spinner("正在输入..."):
-            # response = st.session_state.chat_engine.chat(prompt)
-            # response = st.session_state.chat_engine.invoke({"input": prompt})
             response = st.session_state.chat_engine.invoke({"input": prompt})
             print(response)
-            # st.write(response)
             st.write(response["output"])
             message = {"role": "assistant", "content": response["output"]}
-            # message = {"role": "assistant", "content": response}
-            # st.session_state.chat_engine.memory.add_message(message)
             st.session_state.messages.append(message)  # Add response to message history
