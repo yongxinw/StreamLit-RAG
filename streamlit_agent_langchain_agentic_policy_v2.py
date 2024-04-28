@@ -364,8 +364,16 @@ class UpdateUserRoleTool2(BaseTool):
 
     # def _run(self, a: int, b: int, run_manager: Optional[CallbackManagerForToolRun] = None) -> Any:
     def _run(self, params) -> Any:
-        print(params)
-        params_dict = params
+        print(params, type(params))
+        if isinstance(params, str):
+            try:
+                params_dict = json.loads(params)
+            except json.JSONDecodeError:
+                return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
+        elif isinstance(params, dict):
+            params_dict = params
+        else:
+            return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
         if params_dict is None:
             return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
         # try:
@@ -565,7 +573,7 @@ class UpdateUserLocTool2(BaseTool):
     # def _run(self, a: int, b: int, run_manager: Optional[CallbackManagerForToolRun] = None) -> Any:
     def _run(self, params) -> Any:
         print(params)
-        params_dict = params
+        # params_dict = params
         # try:
         #     params_dict = json.loads(params)
         # except json.JSONDecodeError:
@@ -573,6 +581,22 @@ class UpdateUserLocTool2(BaseTool):
         #         "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
         #         + LOC_STR
         #     )
+        if isinstance(params, str):
+            try:
+                params_dict = json.loads(params)
+            except json.JSONDecodeError:
+                return (
+                    "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
+                    + LOC_STR
+                )
+        elif isinstance(params, dict):
+            params_dict = params
+        else:
+            return (
+                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
+                + LOC_STR
+            )
+        
         if params_dict is None:
             return (
                 "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
@@ -594,7 +618,7 @@ class UpdateUserLocTool2(BaseTool):
                 "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
                 + LOC_STR
             )
-        if user_location not in LOC_STR:
+        if user_location not in LOC_STR and user_location not in ["开放大学", "蟹壳云学", "专技知到"]:
             return (
                 "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
                 + LOC_STR
@@ -780,7 +804,17 @@ class CheckUserCreditTool2(BaseTool):
 
         # params = params.replace("'", '"')
         print(params, type(params))
-        params_dict = params
+        # params_dict = params
+        if isinstance(params, str):
+            try:
+                params_dict = json.loads(params)
+            except json.JSONDecodeError as e:
+                print(e)
+                return "麻烦您提供一下您的身份证号，我这边帮您查一下"
+        elif isinstance(params, dict):
+            params_dict = params
+        else:
+            return "麻烦您提供一下您的身份证号，我这边帮您查一下"
         # try:
         #     params_dict = json.loads(params)
         # except json.JSONDecodeError as e:
@@ -2178,7 +2212,12 @@ main_question_classifier_template = """Given the user input AND the user input h
 Here are a few examples:
 - If the user says "学时没显示", you should classify it as `学时没显示`
 - If the user says "学时有问题", you should classify it as `学时有问题`
-- IF AND ONLY IF the user mentions "济宁市", you should classify it as related to `济宁市`.
+- If the user says "学时没对接", you should classify it as `学时没显示`
+- If the user says "学时没对接", you should classify it as `学时没显示`
+- If the user says "学时不对接", you should classify it as `学时没显示`
+- If the user says "学时不对", you should classify it as `学时有问题`
+- If the user says "学时对接", you should classify it as `学时对接`
+- If the user mentions "济宁市", you should classify it as related to `济宁市`.
 - If the user doesn't mention "济宁市", you should NEVER classify it as related to `济宁市`
 
 
