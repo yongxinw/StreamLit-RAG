@@ -1395,10 +1395,12 @@ update_user_role_agent = create_atomic_retriever_agent(
         根据用户的输入 input, 你需要将用户意图分类为 `查询用户角色` 或者 `提供用户角色信息` 或者 `其他`。
         如果用户需要帮助查找他们的角色，请使用 {update_user_role_tools[1].name} 来搜索用户角色。
         如果用户的意图是提供他们的角色信息，请使用 {update_user_role_tools[0].name} 来更新用户角色。
-        如果是`其他`，使用 {update_user_role_tools[0].name} 工具，将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        所有其他用户输入都应该被分类为 `其他`。不确定时，默认为`其他`。使用 {update_user_role_tools[0].name} 工具，将 'arguments' 中的 'user_role' 设置为 'unknown'。
+        如果用户意图是`其他`，使用 {update_user_role_tools[0].name} 工具，将 'arguments' 中的 'user_role' 设置为 'unknown'。
         
         用户角色为：专技个人、用人单位、主管部门、继续教育机构、跳过
         注意：用户的问题可能包含角色，即使包含角色，用户的意图不一定是提供角色信息。因此，当包含角色时，你要更加小心的对用户的意图进行分类。
+        注意：当用户意图查询信息是，用户不一定只会查询自己的角色，也可能查询其他信息。只有当用户查询角色或注册信息时，你才需要使用 {update_user_role_tools[1].name} 工具。否则，使用 {update_user_role_tools[0].name} 工具，将 'arguments' 中的 'user_role' 设置为 'unknown'。
         
         最终返回需要调用的工具名称和输入。返回的响应应该是一个 JSON 数据，其中包含 'name' 和 'arguments' 键。'argument' 的值应该是一个 json，其中包含要传递给工具的输入。
 
