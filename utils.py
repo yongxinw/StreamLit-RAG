@@ -255,9 +255,13 @@ def create_atomic_retriever_agent_single_tool_qa_map(tool, qa_map_path, system_p
     """
     def _parse_retreiver_outputs(model_output):
         # model_output is a string with top k matches.
-        return {'results': model_output, 'qa_map_path': qa_map_path}
+        print("~~~~~22:", model_output)
+        return {'results': model_output, 'qa_map_path': qa_map_path, 'orig_question': model_output['question']['input']}
+    run_chosen_tool = RunnableParallel(
+        question=RunnablePassthrough(),
+        tool_chain=RunnableLambda(lambda x: x["input"]) | tool)
 
-    return RunnableLambda(lambda x: x["input"]) | tool | _parse_retreiver_outputs | RunnableLambda(merge_results) | output_parser_from_merged_results
+    return run_chosen_tool | _parse_retreiver_outputs | RunnableLambda(merge_results) | output_parser_from_merged_results
 
 
 def output_parser_from_merged_results(model_output):
