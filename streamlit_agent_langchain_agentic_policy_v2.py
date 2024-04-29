@@ -1931,10 +1931,10 @@ refund_prompt = PromptTemplate.from_template(
     """Use a tool to answer the user's qustion.
 
 Ask the user to provide 身份证号，in order to 查询课程信息
-You MUST use a tool and generate a response based on tool's output.
+You MUST use your ONLY tool to answer the user question.
 
 When user input a number longer than 6 digits, use it as user 身份证号 in the context for the tool.
-DO NOT hallucinate!!!! 
+DO NOT hallucinate!!!! DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
 
 You have access to the following tools:
 
