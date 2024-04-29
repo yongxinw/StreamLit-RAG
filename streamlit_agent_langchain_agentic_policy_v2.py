@@ -7,6 +7,9 @@ TODO:
     4. Future data organization.
     5. Improve latency.
     6. Test general API for more data.
+    7. Add jining 学时获取不到的问题
+    8. Augmentation
+    9. eval set
 """
 from langchain.tools.render import render_text_description
 from langchain_core.prompts import ChatPromptTemplate
@@ -544,6 +547,8 @@ class UpdateUserLocTool2(BaseTool):
 
 You MUST use a tool and generate a response based on tool's output.
 DO NOT hallucinate!!!!
+DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
+DO NOT Assume year, course_type, or user_id_number, ALWAYS ask if needed.
 
 Note that you may need to translate user inputs. Here are a few examples for translating user inputs:
 - user: "公需", output: "公需课"
@@ -646,7 +651,7 @@ class CheckUserCreditTool(BaseTool):
         user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
 
         match_location = check_user_location(user_provided_loc, [user_loc])
-        if match_location is not None:
+        if match_location is None:
             match_other_loc = check_user_location(user_provided_loc, [
                 "开放大学",
                 "蟹壳云学",
@@ -1669,7 +1674,9 @@ credit_problem_prompt = PromptTemplate.from_template(
     """Use a tool to answer the user's qustion.
 
 You MUST use a tool and generate a response based on tool's output.
-DO NOT hallucinate!!!! DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
+DO NOT hallucinate!!!! 
+DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
+DO NOT Assume year, course_type, or user_id_number, ALWAYS ask if needed.
 
 Note that you may need to translate user inputs. Here are a few examples for translating user inputs:
 - user: "公需", output: "公需课"
@@ -1778,6 +1785,8 @@ If the user's learning method belongs to 电脑浏览器 or 手机微信扫码, 
 Otherwise, say 目前支持的学习方式是电脑浏览器或者手机微信扫码两种，建议您再使用正确的方式试试
 If the user's used the right method but still has problems, then say 建议清除浏览器或者微信缓存再试试
 If the user used the right method and 清除了缓存, then say，抱歉，您的问题涉及到测试，建议您联系平台的人工热线客服或者在线客服进行反馈
+
+Answer the question in Chinese.
 
 {chat_history}
 Question: {input}
@@ -1941,6 +1950,8 @@ Observation: the result of the action
 ... (this Thought/Action/Action Input/Observation can repeat N times)
 Thought: I now know the final answer
 Final Answer: the final answer to the original input question
+
+Answer the question in Chinese.
 
 Begin!
 
