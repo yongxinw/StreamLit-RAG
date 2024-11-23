@@ -49,7 +49,7 @@ def get_registration_status(params: Dict[str, str]) -> str:
     if response.status_code == 200:
         data = response.json()["data"]
         if len(data) == 0:
-            return f"很抱歉，根据您提供的身份证号码{params['user_id_number']}，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
+            return f"很抱歉，根据您提供的身份证号码，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
         status = {
             "姓名": data[0]["real_name"] if "real_name" in data[0] else None,
             "单位": data[0]["du_name"] if "du_name" in data[0] else None,
