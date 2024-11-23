@@ -1,5 +1,8 @@
 DASHSCOPE_API_KEY = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
 
+#"qwen-max"， "qwen-plus", "qwen-turbo"
+LLM_NAME="qwen-turbo"
+
 REGISTRATION_STATUS = {
     "372323199509260348": {
         "状态": "已注册",

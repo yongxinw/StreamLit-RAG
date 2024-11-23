@@ -10,7 +10,6 @@ from langchain.tools.render import render_text_description
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
-from langchain.chains import LLMChain
 from langchain.embeddings.dashscope import DashScopeEmbeddings
 from langchain.memory import ConversationBufferMemory
 from langchain.agents import AgentExecutor, create_react_agent
@@ -23,7 +22,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents.base import Document
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
-from statics import DASHSCOPE_API_KEY
+from statics import DASHSCOPE_API_KEY, LLM_NAME
 
 
 os.environ["DASHSCOPE_API_KEY"] = DASHSCOPE_API_KEY
@@ -75,7 +74,7 @@ def create_react_agent_with_memory(tools, prompt_str=None):
         memory_key="chat_history", input_key="input"
     )
     agent = create_react_agent(
-        Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+        Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
         tools=tools,
         prompt=prompt,
     )
@@ -90,7 +89,7 @@ def create_react_agent_with_memory(tools, prompt_str=None):
 
 def create_dummy_agent(dummy_message):
     dummy_agent = create_react_agent(
-        Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+        Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
         tools={},
         prompt=PromptTemplate.from_template(dummy_message),
     )
@@ -179,7 +178,7 @@ merge_results_prompt = PromptTemplate.from_template(
 merge_results_prompt.input_variables = ["context", "input"]
 
 merge_results_chain = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    llm=Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     prompt=merge_results_prompt,
     verbose=True,
 )
@@ -224,7 +223,7 @@ def create_atomic_retriever_agent(tools, qa_map_path, system_prompt=None):
         [("system", system_prompt), ("user", "{input}")]
     )
     
-    model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+    model = Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3})
     chain = prompt | model | JsonOutputParser()
 
     def tool_chain(model_output):
@@ -291,7 +290,7 @@ def create_single_function_call_agent(tool, system_prompt=None):
         [("system", system_prompt), ("user", "{input}")]
     )
 
-    model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+    model = Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3})
     chain = prompt | model | JsonOutputParser()
     return chain | {"params": RunnableLambda(lambda x: x["arguments"])} | tool | output_parser
 

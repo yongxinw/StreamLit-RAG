@@ -20,7 +20,8 @@ from statics import (
     REGISTRATION_STATUS,
     REGISTRATION_STATUS_NON_IDV,
     DASHSCOPE_API_KEY,
-    SIM_DATA
+    SIM_DATA,
+    LLM_NAME,
 )
 from utils import (
     check_user_location,
@@ -475,7 +476,7 @@ tools = [
 
 memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
 agent = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}), tools, prompt
+    Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}), tools, prompt
 )
 main_qa_agent_executor = AgentExecutor.from_agent_and_tools(
     agent=agent, tools=tools, memory=memory, verbose=True, handle_parsing_errors=True
@@ -666,7 +667,7 @@ login_problem_classifier_memory = ConversationBufferMemory(
 )
 
 login_problem_classifier_chain = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    llm=Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     prompt=login_problem_classifier_prompt,
     memory=login_problem_classifier_memory,
     verbose=True,
@@ -678,7 +679,7 @@ login_problem_agent_executor = create_atomic_retriever_agent_single_tool_qa_map(
 )
 
 login_problem_ask_user_executor = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    llm=Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     prompt=PromptTemplate.from_template(
         """Your ONLY job is to say: 请问您无法登录或登录不上，提示是什么？
 
@@ -759,7 +760,7 @@ forgot_password_classifier_memory = ConversationBufferMemory(
     memory_key="chat_history", input_key="input"
 )
 forgot_password_classifier_chain = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    llm=Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     prompt=forgot_password_classifier_prompt,
     memory=forgot_password_classifier_memory,
     verbose=True,
@@ -770,7 +771,7 @@ forgot_password_agent_executor = create_atomic_retriever_agent_single_tool_qa_ma
 )
 
 forgot_password_ask_user_executor = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    llm=Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     prompt=PromptTemplate.from_template(
         """Your ONLY job is to say: 您可以在平台首页右侧——【登录】按钮右上方 ——点击【忘记密码？】找回密码。
 do not answer anything other than asking the user to provide more information.
@@ -890,7 +891,7 @@ credit_problem_memory = ConversationBufferMemory(
     memory_key="chat_history", input_key="input"
 )
 credit_problem_chain = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
     credit_problem_tools,
     credit_problem_prompt,
@@ -966,7 +967,7 @@ course_progress_problems_prompt.input_variables = [
     "chat_history",
 ]
 course_progress_problems_llm = Tongyi(
-    model_name="qwen-max", model_kwargs={"temperature": 0.3}
+    model_name=LLM_NAME, model_kwargs={"temperature": 0.3}
 )
 course_progress_problems_memory = ConversationBufferMemory(
     memory_key="chat_history", input_key="input", return_messages=True
@@ -1010,7 +1011,7 @@ multiple_login_prompt.input_variables = [
     "input",
     "chat_history",
 ]
-multiple_login_llm = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
+multiple_login_llm = Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3})
 multiple_login_memory = ConversationBufferMemory(
     memory_key="chat_history", input_key="input", return_messages=True
 )
@@ -1074,7 +1075,7 @@ refund_prompt.input_variables = [
 refund_tools = [RefundTool()]
 refund_memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
 refund_chain = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
     refund_tools,
     refund_prompt,
@@ -1140,7 +1141,7 @@ cannot_find_course_memory = ConversationBufferMemory(
     memory_key="chat_history", input_key="input"
 )
 cannot_find_course_chain = create_react_agent(
-    Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
     cannot_find_course_tools,
     cannot_find_course_prompt,
@@ -1202,7 +1203,7 @@ main_question_classifier_mem = ConversationBufferMemory(
 )
 
 main_question_classifier = LLMChain(
-    llm=Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
+    llm=Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
     prompt=main_question_classifier_prompt,
     memory=main_question_classifier_mem,
     verbose=True,
