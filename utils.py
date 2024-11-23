@@ -1,26 +1,32 @@
 from typing import List
 from fuzzywuzzy import fuzz
-from fuzzywuzzy import process
 import os
 import json
 import operator
-from langchain.agents import AgentExecutor, create_react_agent
+import streamlit as st
 
-from langchain.memory import ConversationBufferMemory
-from langchain_community.llms import Tongyi
-from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableParallel
 from langchain.tools.render import render_text_description
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import LLMChain
+from langchain.chains import LLMChain
+from langchain.embeddings.dashscope import DashScopeEmbeddings
+from langchain.memory import ConversationBufferMemory
+from langchain.agents import AgentExecutor, create_react_agent
+
+from langchain.tools import BaseTool, StructuredTool, tool
+from langchain.tools.retriever import create_retriever_tool
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+from langchain_community.llms import Tongyi
+from langchain_community.vectorstores import FAISS
+from langchain_core.documents.base import Document
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnableBranch, RunnableLambda
+from statics import DASHSCOPE_API_KEY
 
 
-from statics import (COURSE_PURCHASES, CREDIT_HOURS, LOC_STR,
-                     REGISTRATION_STATUS)
-
-os.environ["DASHSCOPE_API_KEY"] = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
-
+os.environ["DASHSCOPE_API_KEY"] = DASHSCOPE_API_KEY
 
 def create_react_agent_with_memory(tools, prompt_str=None):
     if prompt_str is None:
@@ -298,4 +304,71 @@ def check_user_location(user_provided_location: str, locations: List[str]):
     if len(filtered_scores) == 0:
         return None
     return filtered_scores[0][0]
-    
+
+
+@st.cache_resource
+def create_retrieval_tool(
+    markdown_path,
+    tool_name,
+    tool_description,
+    chunk_size: int = 100,
+    chunk_overlap: int = 30,
+    separators: List[str] = None,
+    search_kwargs: dict = None,
+    return_retriever: bool = False,
+    rerank: bool = False,
+    use_cached_faiss: bool = True,
+):
+    # Load files
+    loader = UnstructuredMarkdownLoader(markdown_path)
+    docs = loader.load()
+
+    # Declare the embedding model
+    embeddings = DashScopeEmbeddings(
+        model="text-embedding-v2",
+    )
+    # embeddings = OpenAIEmbeddings()
+
+    if os.path.exists(f"./vector_store/{tool_name}.faiss") and use_cached_faiss:
+        vector = FAISS.load_local(
+            f"./vector_store/{tool_name}.faiss",
+            embeddings,
+            allow_dangerous_deserialization=True,
+        )
+    else:
+        # =============only split by separaters============
+        documents = []
+        all_content = docs[0].page_content
+        texts = [sentence for sentence in all_content.split("\n\n")]
+        meta_data = [docs[0].metadata] * len(texts)
+        for content, meta in zip(texts, meta_data):
+            new_doc = Document(page_content=content, metadata=meta)
+            documents.append(new_doc)
+
+        print(documents)
+        vector = FAISS.from_documents(documents, embeddings)
+
+        vector.save_local(f"./vector_store/{tool_name}.faiss")
+    # Create a retriever tool
+    if search_kwargs is None:
+        retriever = vector.as_retriever()
+    else:
+        retriever = vector.as_retriever(search_kwargs=search_kwargs)
+
+    # if rerank:
+    #     # compressor = CohereRerank()
+    #     compressor = FlashrankRerank()
+    #     retriever = ContextualCompressionRetriever(
+    #         base_compressor=compressor, base_retriever=retriever
+    #     )
+
+    registration_tool = create_retriever_tool(
+        retriever,
+        name=tool_name,
+        description=tool_description,
+    )
+
+    registration_tool.return_direct = True
+    if return_retriever:
+        return registration_tool, retriever
+    return registration_tool
