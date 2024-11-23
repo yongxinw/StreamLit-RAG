@@ -57,6 +57,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableBranch, RunnableLambda
 
+import apis
 from statics import (
     COURSE_PURCHASES,
     CREDIT_HOURS,
@@ -200,13 +201,8 @@ class RegistrationStatusTool(BaseTool):
             int(params_dict["user_id_number"])
         except ValueError:
             return "请指定您或者管理员身份证号"
-        input = params_dict["user_id_number"]
-        if REGISTRATION_STATUS.get(input) is not None:
-            status = REGISTRATION_STATUS.get(input)
-            ret_str = [f"{k}: {v}" for k, v in status.items()]
-            ret_str = "  \n".join(ret_str)
-            return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
-        return "经查询，您尚未在大众云学平台上注册"
+        
+        return apis.get_registration_status(params_dict)
 
 
 class RegistrationStatusToolIndividual(BaseTool):
@@ -231,13 +227,8 @@ class RegistrationStatusToolIndividual(BaseTool):
             int(params_dict["user_id_number"])
         except Exception:
             return "抱歉，我还没有成功识别您的身份证号码，请指定"
-        input = str(params_dict["user_id_number"])
-        if REGISTRATION_STATUS.get(input) is not None:
-            status = REGISTRATION_STATUS.get(input)
-            ret_str = [f"{k}: {v}" for k, v in status.items()]
-            ret_str = "  \n".join(ret_str)
-            return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
-        return f"很抱歉，根据您提供的身份证号码{input}，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
+        
+        return apis.get_registration_status(params_dict)
 
 class RegistrationStatusToolUniversal(BaseTool):
     """查询用户在大众云学平台上的注册状态"""
@@ -267,18 +258,8 @@ class RegistrationStatusToolUniversal(BaseTool):
         input = str(params_dict["user_id_number"])
         if input in ["unknown", "未知"]:
             return "抱歉，我还没有成功识别您的身份证号码，单位信用代码，或者单位名称，请指定"
-        if REGISTRATION_STATUS.get(input) is not None:
-            status = REGISTRATION_STATUS.get(input)
-            ret_str = [f"{k}: {v}" for k, v in status.items()]
-            ret_str = "  \n".join(ret_str)
-            return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
-
-        if REGISTRATION_STATUS_NON_IDV.get(input) is not None:
-            status = REGISTRATION_STATUS_NON_IDV.get(input)
-            ret_str = [f"{k}: {v}" for k, v in status.items()]
-            ret_str = "  \n".join(ret_str)
-            return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
-        return f"很抱歉，根据您提供的{input}，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
+        
+        return apis.get_registration_status(params_dict)
 
 
 class RegistrationStatusToolNonIndividual(BaseTool):
@@ -303,12 +284,8 @@ class RegistrationStatusToolNonIndividual(BaseTool):
         except ValueError:
             return "抱歉，我还没有成功识别您的单位管理员身份证号或者单位名称或者统一信用代码，请指定"
         input = str(params_dict["user_id_number"])
-        if REGISTRATION_STATUS_NON_IDV.get(input) is not None:
-            status = REGISTRATION_STATUS_NON_IDV.get(input)
-            ret_str = [f"{k}: {v}" for k, v in status.items()]
-            ret_str = "  \n".join(ret_str)
-            return "经查询，您在大众云学平台上的注册状态如下：  \n" + ret_str
-        return f"很抱歉，根据您提供的号码{input}，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
+        
+        return apis.get_registration_status(params_dict)
 
 
 class UpdateUserRoleTool(BaseTool):
