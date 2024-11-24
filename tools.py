@@ -117,7 +117,6 @@ class RefundTool(BaseTool):
     description: str = (
         "用于检查用户购买课程记录，需要指通过 json 指定用户身份证号 user_id_number、用户想要查询的课程年份 year、用户想要查询的课程名称 course_name "
     )
-    # args_schema: Type[BaseModel] = CalculatorInput
     return_direct: bool = True
 
     def _run(self, params) -> Any:
@@ -177,7 +176,6 @@ class CheckPurchaseTool(BaseTool):
     description: str = (
         "用于检查用户购买课程记录，需要指通过 json 指定用户身份证号 user_id_number、用户想要查询的课程年份 year、用户想要查询的课程名称 course_name "
     )
-    # args_schema: Type[BaseModel] = CalculatorInput
     return_direct: bool = True
 
     def _run(self, params) -> Any:

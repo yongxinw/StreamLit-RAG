@@ -57,7 +57,7 @@ def _init():
                 测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。测试模拟数据如下：\n\n
                 {SIM_DATA}
         """,
-            }
+            }#TODO: ask user type here?
         ]
 
 
@@ -403,7 +403,7 @@ DO NOT answer the question without using a tool.
 
 Current user role is """
             + user_role
-            + """.
+            + """
 
 You have access to the following tools:
 
@@ -834,7 +834,7 @@ jining_agent_executor = create_atomic_retriever_agent_single_tool_qa_map(
 
 
 # ===========================================================================
-#  START: CREDIT CHANIN
+#  START: CREDIT CHAIN
 # ===========================================================================
 credit_problem_prompt = PromptTemplate.from_template(
     """Use a tool to answer the user's qustion.
@@ -936,12 +936,12 @@ main_credit_problem_chain = {
 } | RunnableLambda(check_user_loc_and_route)
 
 # ===========================================================================
-#  END: CREDIT CHANIN
+#  END: CREDIT CHAIN
 # ===========================================================================
 
 
 # ===========================================================================
-#  START: Courese Progress
+#  START: Courses Progress
 # ===========================================================================
 course_progress_problems_prompt = PromptTemplate.from_template(
     """Answer the user's question step by step. Don't give the whole answer at once. Guide the user to the solution.
@@ -1212,6 +1212,7 @@ main_question_classifier = LLMChain(
 if "topic" not in st.session_state:
     st.session_state.topic = None
 
+# Main functional chain (not main chain).
 qa_chain_v2 = {
     "topic": check_user_role_chain,
     "input": lambda x: x["input"],
@@ -1298,7 +1299,7 @@ def main_question_classifier_and_route(info):
     print("unknown")
     return qa_chain_v2
 
-
+# Main chain.
 full_chain = {
     "topic": main_question_classifier,
     "input": lambda x: x["input"],
