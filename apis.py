@@ -4,16 +4,17 @@ from typing import Dict, List, Optional
 import requests
 
 from req_utils import generate_signature
+from utils import check_user_location
+import re
 
-
-def get_registration_status(params: Dict[str, str]) -> str:
+def get_registration_status_api(params: Dict[str, str]) -> str:
     """
     查询用户在大众云学平台上的注册状态
     
     Args:
         params (dict):
             params是一个dictionary，其中需要有"user_id_number"关键词，
-            代表用户身份证号，或者管理员身份证号，或者单位名称，或者统一信用代码。如：{"user_id_number": "372323199509260348"}
+            代表用户身份证号。测试使用：{"user_id_number": "350102199403071313"}
     Returns:
         str: 用户在大众云学平台上的注册状态，如：
         
@@ -73,7 +74,7 @@ def get_registration_status(params: Dict[str, str]) -> str:
 
 
 
-def check_credit_hours(params: Dict[str, str]) -> List[dict]:
+def check_credit_hours_simulate(params_dict: Dict[str, str], credit_problem_chain_executor) -> str:
     """
     查询用户在大众云学平台上的学时情况
 
@@ -85,38 +86,388 @@ def check_credit_hours(params: Dict[str, str]) -> List[dict]:
                 course_type: 代表课程类型，如："公需课"或者"专业课"
             如：{"user_id_number": "372323199509260348", "year": "2020", "course_type": "公需课"}
     Returns:
-        List[dict]: 用户在大众云学平台上的学时情况，是一个list of dictionaries，如：
-        [
-            {"课程名称": "公需课5", "学时": 10, "进度": 100, "考核": "未完成"},
-            {"课程名称": "公需课6", "学时": 10, "进度": 12, "考核": "未完成"},
-        ]
+        str: 用户在大众云学平台上的学时情况
     """
-    pass
+    user_id_number = str(params_dict["user_id_number"])
+    year = re.search(r"\d+", str(params_dict["year"])).group()
+    course_type = str(params_dict["course_type"])
 
-def check_course_purchases(params: Dict[str, str]) -> List[dict]:
+    template = credit_problem_chain_executor.agent.runnable.get_prompts()[
+        0
+    ].template.lower()
+    # print(template)
+    start_index = template.find("user location: ") + len("user location: ")
+    end_index = template.find("\n", start_index)
+    user_provided_loc = template[start_index:end_index].strip()
+
+    user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
+
+    match_location = check_user_location(user_provided_loc, [user_loc])
+    if match_location is None:
+        match_other_loc = check_user_location(user_provided_loc, [
+            "开放大学",
+            "蟹壳云学",
+            "专技知到",
+            "文旅厅",
+            "教师",
+        ])
+        if match_other_loc is not None:
+            if match_other_loc == "文旅厅":
+                return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+            return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
+        return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
+    # if user_provided_loc not in user_loc and user_loc not in user_provided_loc:
+    #     match_other_loc = check_user_location(user_provided_loc, [
+    #         "开放大学",
+    #         "蟹壳云学",
+    #         "专技知到",
+    #         "文旅厅",
+    #         "教师",
+    #     ])
+    #     if match_other_loc is not None:
+    #         if user_provided_loc == "文旅厅":
+    #             return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+    #         return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
+    #     return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
+    else:
+        # if user_provided_loc in [
+        #     "开放大学",
+        #     "蟹壳云学",
+        #     "专技知到",
+        #     "文旅厅",
+        #     "教师",
+        # ]:
+        match_other_loc = check_user_location(user_provided_loc, [
+            "开放大学",
+            "蟹壳云学",
+            "专技知到",
+            "文旅厅",
+            "教师",
+        ])
+        if match_other_loc is not None:
+            return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+        hours = CREDIT_HOURS.get(user_id_number)
+        if hours is None:
+            return "经查询，平台还未接收到您的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+        year_hours = hours.get(year)
+        if year_hours is None:
+            return f"经查询，平台还未接收到您在{year}年度的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+        course_year_hours = year_hours.get(course_type)
+        if course_year_hours is None:
+            return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+        if len(course_year_hours) == 0:
+            return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+        total_hours = sum([x["学时"] for x in course_year_hours])
+        finished_hours = sum(
+            [
+                x["学时"]
+                for x in course_year_hours
+                if x["进度"] == 100 and x["考核"] == "合格"
+            ]
+        )
+        unfinished_courses = [
+            f"{x['课程名称']}完成了{x['进度']}%"
+            for x in course_year_hours
+            if x["进度"] < 100
+        ]
+        untested_courses = [
+            x["课程名称"] for x in course_year_hours if x["考核"] == "未完成"
+        ]
+        unfinished_str = "  \n\n".join(unfinished_courses)
+        untested_str = "  \n\n".join(untested_courses)
+
+        res_str = f"经查询，您在{year}年度{course_type}的学时情况如下：  \n\n"
+        res_str += f"您报名的总学时：{total_hours}  \n\n"
+        res_str += f"已完成学时：{finished_hours}  \n\n"
+        res_str += f"其中，以下几节课进度还没有达到100%，每节课进度看到100%后才能计入学时  \n\n"
+        res_str += unfinished_str + "  \n\n"
+        res_str += f"以下几节课还没有完成考试，考试通过后才能计入学时  \n\n"
+        res_str += untested_str + "  \n\n"
+        return res_str
+
+def check_credit_hours_api(params_dict: Dict[str, str], credit_problem_chain_executor) -> str:
+    """
+    查询用户在大众云学平台上的学时情况
+
+    Args:
+        params (dict):
+            params是一个dictionary，其中需要有"user_id_number", "year", "course_type"关键词，
+                user_id_number: 代表用户身份证号，测试使用："350581199412080534"
+                year: 代表年份，测试使用："2021"
+                course_type: 代表课程类型，如："公需课"或者"专业课"
+            如：{"user_id_number": "350581199412080534", "year": "2021", "course_type": "公需课"}
+    Returns:
+        str: 用户在大众云学平台上的学时情况
+    """
+    user_id_number = str(params_dict["user_id_number"])
+    year = re.search(r"\d+", str(params_dict["year"])).group()
+    course_type = str(params_dict["course_type"])
+
+    template = credit_problem_chain_executor.agent.runnable.get_prompts()[
+        0
+    ].template.lower()
+    # print(template)
+    start_index = template.find("user location: ") + len("user location: ")
+    end_index = template.find("\n", start_index)
+    user_provided_loc = template[start_index:end_index].strip()
+
+    # user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
+    user_loc = _get_user_location_by_id_number(user_id_number)
+
+    match_location = check_user_location(user_provided_loc, [user_loc])
+    if match_location is None:
+        match_other_loc = check_user_location(user_provided_loc, [
+            "开放大学",
+            "蟹壳云学",
+            "专技知到",
+            "文旅厅",
+            "教师",
+        ])
+        if match_other_loc is not None:
+            if match_other_loc == "文旅厅":
+                return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+            return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
+        return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
+    else:
+        match_other_loc = check_user_location(user_provided_loc, [
+            "开放大学",
+            "蟹壳云学",
+            "专技知到",
+            "文旅厅",
+            "教师",
+        ])
+        if match_other_loc is not None:
+            return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
+        ret_str = _get_credit_hours_by_id_number(user_id_number, year, course_type)
+        return ret_str
+        
+
+def _get_user_location_by_id_number(user_id_number: str) -> Optional[str]:
+    """
+    根据用户身份证号获取用户所在地
+
+    Args:
+        user_id_number (str): 用户身份证号
+    Returns:
+        str: 用户所在地
+    """
+    url = "http://120.41.168.136:8600/customer/api/mgm/get-professional-person-list"  
+    secret_key = "123456"
+    timestamp = str(int(time.time() * 1000))
+    signature = generate_signature(timestamp, secret_key)
+    params = {
+        "secret": signature,
+        "timestamp": timestamp,
+        'platformId': '6002',
+        'idNumber': str(user_id_number)
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        loc = data.get("data", {})[0].get("area", None)
+        return loc
+    
+    return None
+
+
+def _get_credit_hours_by_id_number(user_id_number: str, year: str, course_type: str) -> Optional[str]:
+    """
+    根据用户身份证号获取用户学时信息
+
+    Args:
+        user_id_number (str): 用户身份证号
+        year (str): 年份
+        course_type (str): 课程类型
+    Returns:
+        str: 用户学时信息
+    """
+    credit_id = _get_credit_id_by_id_number(user_id_number)
+    if credit_id is None:
+        # Failed to retrieve credit id
+        return "经查询，平台还未接收到您的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+    url = "http://120.41.168.136:8600/customer/api/mgm/get-staff-report-by-id"
+    secret_key = "123456"
+    timestamp = str(int(time.time() * 1000))
+    signature = generate_signature(timestamp, secret_key)
+
+    params = {
+        "secret": signature,
+        "timestamp": timestamp,
+        'platformId': '6002',
+        'year': str(year),
+        'id': str(credit_id),
+    }
+    
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        if data["totalCount"] == 0:
+            return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+        data = data.get("data", {})
+        if isinstance(data, list):
+            data = data[0]
+        else:
+            return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
+        if course_type == "公需课":
+            needed_hours = data.get("year_publicNeeds", None)
+            completed_hours = data.get("publicNeeds", None)
+        elif course_type == "专业课":
+            needed_hours = data.get("year_majorNeeds", None)
+            completed_hours = data.get("majorNeeds", None)
+        if any([needed_hours is None, completed_hours is None]):
+            return "查询失败，请稍后再试，或者联系管理员或客服人员"
+        if "pass_type" in data:
+            if data["pass_type"] == 1:
+                return f"经查询，您在{year}年度{course_type}的学时情况如下：\n\n您报名的总学时：{needed_hours}  \n\n已完成学时：{completed_hours}  \n\n您的认定结果：合格"
+            else:
+                return f"经查询，您在{year}年度{course_type}的学时情况如下：\n\n您报名的总学时：{needed_hours}  \n\n已完成学时：{completed_hours}  \n\n您的认定结果：不合格"
+        return f"经查询，您在{year}年度{course_type}的学时情况如下：\n\n您报名的总学时：{needed_hours}  \n\n已完成学时：{completed_hours}"
+    return "查询失败，请稍后再试，或者联系管理员或客服人员"
+
+
+def _get_credit_id_by_id_number(user_id_number: str) -> Optional[str]:
+    """
+    根据用户身份证号获取用户学时信息
+
+    Args:
+        user_id_number (str): 用户身份证号
+    Returns:
+        dict: 用户学时信息
+    """
+    url = "http://120.41.168.136:8600/customer/api/mgm/get-professional-person-list"  
+    secret_key = "123456"
+    timestamp = str(int(time.time() * 1000))
+    signature = generate_signature(timestamp, secret_key)
+    params = {
+        "secret": signature,
+        "timestamp": timestamp,
+        'platformId': '6002',
+        'idNumber': str(user_id_number)
+    }
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        credit_id = data.get("data", {})[0].get("id", None)
+        return credit_id
+    
+    return None
+
+def check_course_purchases_simulate(params_dict: Dict[str, str]) -> str:
+    """
+    查询用户在大众云学平台上的课程购买情况
+
+    Args:
+        params_dict (dict):
+            user_id_number: 代表用户身份证号，如："372323199509260348"
+            year: 代表年份，如："2020"
+            course_name: 代表课程类型，如："新闻专业课培训班"
+    Returns:
+        str: 用户在大众云学平台上的课程购买情况
+    """
+    user_id_number = params_dict["user_id_number"]
+
+    year = params_dict["year"]
+    year = re.search(r"\d+", year).group()
+
+    course_name = params_dict["course_name"]
+    if COURSE_PURCHASES.get(user_id_number) is not None:
+        purchases = COURSE_PURCHASES.get(user_id_number)
+        if year in purchases:
+            if course_name in purchases[year]:
+                progress = purchases[year][course_name]["进度"]
+                if progress == 0:
+                    return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
+                return f"经查询，您已经购买{year}年度的{course_name}，您的学习进度为{progress}%。请前往专业课平台，点击右上方【我的学习】找到对应课程继续学习。"
+            return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+        return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+    return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+
+def check_course_purchases_api(params_dict: Dict[str, str]) -> str:
     """
     查询用户在大众云学平台上的课程购买情况
 
     Args:
         params (dict):
-            params是一个dictionary，其中需要有"user_id_number", "year", "course_name"关键词，
-                user_id_number: 代表用户身份证号，如："372323199509260348"
-                year: 代表年份，如："2020"
-                course_name: 代表课程类型，如："新闻专业课培训班"
-            如：{"user_id_number": "372323199509260348", "year": "2020", "course_name": "新闻专业课培训班"}
+            user_id_number: 代表用户身份证号，测试使用："ABCDE0670"
+            year: 代表年份，测试使用："2023"
+            course_name: 代表课程类型，测试使用："2023年_D_导入班级测试2"
     Returns:
-        dict: 用户在大众云学平台上的课程购买情况，如：
-        {
-            "课程名称": "新闻专业课培训班",
-            "购买时间": "2020-03-01",
-            "购买地点": "济南市",
-            "管理员": "王芳芳",
-            "学时": 10,
-            "进度": 100,
-            "考核": "合格",
-        }
+        str: 用户在大众云学平台上的课程购买情况
     """
-    pass
+    user_id_number = params_dict["user_id_number"]
+
+    year = params_dict["year"]
+    year = re.search(r"\d+", year).group()
+
+    course_name = params_dict["course_name"]
+
+    url = "http://120.41.168.136:8600/customer/api/train/get-general-info-list"
+    secret_key = "123456"
+    timestamp = str(int(time.time() * 1000))
+    signature = generate_signature(timestamp, secret_key)
+
+    params = {
+        "secret": signature,
+        "timestamp": timestamp,
+        'platformId': 'sit_001',
+        'idNumber': user_id_number,
+    }
+
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        data = response.json()
+        data = data.get("data", {})
+        if len(data) == 0:
+            return f"经查询，您在{year}年度，没有购买任何课程，请您确认您的课程名称、年度、身份证号是否正确。" 
+        data = data[0]
+        order_list = data.get("orderList", [])
+
+        if len(order_list) == 0:
+            return f"经查询，您在{year}年度，没有购买任何课程，请您确认您的课程名称、年度、身份证号是否正确。"
+        order_list_in_year = [order for order in order_list if order["goodsDetail"][0]["year"] == year]
+        if len(order_list_in_year) == 0:
+            return f"经查询，您在{year}年度，没有购买任何课程，请您确认您的课程名称、年度、身份证号是否正确。"
+        
+        matched_orders = [order for order in order_list_in_year if order["goodsDetail"][0]["goods_name"] == course_name]
+        if len(matched_orders) == 0:
+            return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+        
+        matched_order = matched_orders[0]
+        matched_course_id = matched_order["goodsDetail"][0]["goods_id"]
+        
+        class_list = data.get("classList", [])
+        if len(class_list) == 0:
+            return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
+        class_list = class_list[0].get("classList", [])
+        if len(class_list) == 0:
+            return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
+
+        matched_classes = [cls for cls in class_list if cls["id"] == matched_course_id]
+        if len(matched_classes) == 0:
+            return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
+        
+        progress = matched_classes[0]["progress"]
+        return f"经查询，您已经购买{year}年度的{course_name}，您的学习进度为{progress}%。请前往专业课平台，点击右上方【我的学习】找到对应课程继续学习。"
+
+    else:
+        return "查询失败，请稍后再试，或者联系管理员或客服人员"
+    
+    # if COURSE_PURCHASES.get(user_id_number) is not None:
+    #     purchases = COURSE_PURCHASES.get(user_id_number)
+    #     if year in purchases:
+    #         if course_name in purchases[year]:
+    #             progress = purchases[year][course_name]["进度"]
+    #             if progress == 0:
+    #                 return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
+    #             return f"经查询，您已经购买{year}年度的{course_name}，您的学习进度为{progress}%。请前往专业课平台，点击右上方【我的学习】找到对应课程继续学习。"
+    #         return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+    #     return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+    # return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+
 
 
 ### 一些模拟数据
@@ -190,3 +541,9 @@ CREDIT_HOURS = {
         },
     }
 }
+
+if __name__ == "__main__":
+    user_id_number = "350581199412080534"
+    # import ipdb
+    # ipdb.set_trace()
+    print(check_course_purchases_api({"user_id_number": "ABCDE0670", "year": "2023", "course_name": "2023年_D_导入班级测试1"}))
