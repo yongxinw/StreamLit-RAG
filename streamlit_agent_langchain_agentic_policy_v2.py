@@ -34,6 +34,7 @@ from utils import (
     create_retrieval_tool,
 )
 from tools import *
+import pdb
 
 
 def _init():
@@ -65,7 +66,7 @@ _init()
 
 
 # Dynamically updated tools stay in this file.
-# UpdateUserRoleTool, UpdateUserRoleTool2, CheckUserCreditTool, UpdateUserLocTool2
+# UpdateUserRoleTool2, CheckUserCreditTool, UpdateUserLocTool2
 class CheckUserCreditTool(BaseTool):
     """根据用户回答，检查用户学时状态"""
 
@@ -140,79 +141,24 @@ class UpdateUserLocTool2(BaseTool):
                 + LOC_STR
             )
 
-        if params_dict is None:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
+        if (
+            params_dict is None
+            or "user_location" not in params_dict
+            or params_dict["user_location"] is None
+            or params_dict["user_location"] == "unknown"
+            or (
+                params_dict["user_location"] not in LOC_STR
+                and params_dict["user_location"]
+                not in ["开放大学", "蟹壳云学", "专技知到", "文旅厅", "教师"]
             )
-        if "user_location" not in params_dict:
+        ):
             return (
                 "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
                 + LOC_STR
             )
         user_location = params_dict["user_location"]
-        if user_location is None:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        if user_location == "unknown":
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        if user_location not in LOC_STR and user_location not in [
-            "开放大学",
-            "蟹壳云学",
-            "专技知到",
-            "文旅厅",
-            "教师",
-        ]:
-            return (
-                "请问您是在哪个地市平台学习的？请先确认您的学习地市，以便我能为您提供相应的信息。我方负责的主要平台地市有：\n\n"
-                + LOC_STR
-            )
-        credit_problem_chain_executor.agent.runnable.get_prompts()[0].template = (
-            """Use a tool to answer the user's qustion.
-
-You MUST use a tool and generate a response based on tool's output.
-DO NOT hallucinate!!!!
-DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
-DO NOT Assume year, course_type, or user_id_number, ALWAYS ask if needed.
-
-Note that you may need to translate user inputs. Here are a few examples for translating user inputs:
-- user: "公需", output: "公需课"
-- user: "公", output: "公需课"
-- user: "专业", output: "专业课"
-- user: "专", output: "专业课"
-- user: "19年", output: "2019"
-- user: "19", output: "2019"
-- user: "2019年”, output: "2019"
-
-user location: """
-            + user_location
-            + """
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do.
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-{chat_history}
-Question: {input}
-Thought:{agent_scratchpad}
-"""
+        credit_problem_chain_executor.agent.runnable.get_prompts()[0].template.replace(
+            "user location: unknown", f"user location: {user_location}"
         )
         return f"谢谢，已为您更新您的学习地市为{user_location}, 现在请您提供身份证号码，以便我查询您的学时状态。"
 
@@ -220,62 +166,6 @@ Thought:{agent_scratchpad}
 # ===========================================================================
 #  START: MainChain - check user role
 # ===========================================================================
-class UpdateUserRoleTool(BaseTool):
-    """根据用户回答，更新用户角色"""
-
-    name: str = "用户角色更新工具"
-    description: str = (
-        "用于更新用户在对话中的角色，需要指通过 json 指定用户角色 user_role "
-    )
-    return_direct: bool = True
-
-    def _run(self, params) -> Any:
-        print(params)
-        try:
-            params_dict = json.loads(params)
-        except json.JSONDecodeError:
-            return "您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。"
-        if "user_role" not in params_dict:
-            return "您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。"
-        user_role = params_dict["user_role"]
-        if user_role not in ["专技个人", "用人单位", "主管部门", "继续教育机构"]:
-            return "您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。"
-        main_qa_agent_executor.agent.runnable.get_prompts()[0].template = (
-            """Your ONLY job is to use a tool to answer the following question.
-
-    You MUST use a tool to answer the question. 
-    Simply Answer "您能提供更多关于这个问题的细节吗？" if you don't know the answer.
-    DO NOT answer the question without using a tool.
-
-    Current user role is """
-            + user_role
-            + """.
-
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do.
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-{chat_history}
-Question: {input}
-Thought:{agent_scratchpad}
-"""
-        )
-        return f"更新您的用户角色为{user_role}, 请问有什么可以帮到您？"
-
-
 class UpdateUserRoleTool2(BaseTool):
     """根据用户回答，更新用户角色"""
 
@@ -296,56 +186,20 @@ class UpdateUserRoleTool2(BaseTool):
             params_dict = params
         else:
             return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
-        if params_dict is None:
+        if (
+            params_dict is None
+            or "user_role" not in params_dict
+            or params_dict["user_role"] is None
+            or params_dict["user_role"]
+            not in ["专技个人", "用人单位", "主管部门", "继续教育机构", "跳过"]
+        ):
             return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
-        if "user_role" not in params_dict:
-            return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
-        if params_dict["user_role"] is None:
-            return '您好，抱歉我没有检测到您提供的用户类型，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请问您想咨询那个用户类型？（回复"跳过"默认进入专技个人用户类型）'
 
         user_role = params_dict["user_role"]
-        if user_role not in [
-            "专技个人",
-            "用人单位",
-            "主管部门",
-            "继续教育机构",
-            "跳过",
-        ]:
-            return '您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。（回复"跳过"默认进入专技个人用户类型）'
         if user_role == "跳过":
             user_role = "专技个人"
-        main_qa_agent_executor.agent.runnable.get_prompts()[0].template = (
-            """Your ONLY job is to use a tool to answer the following question.
-
-You MUST use a tool to answer the question. 
-Simply Answer "您能提供更多关于这个问题的细节吗？" if you don't know the answer.
-DO NOT answer the question without using a tool.
-
-Current user role is """
-            + user_role
-            + """
-
-You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do.
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-{chat_history}
-Question: {input}
-Thought:{agent_scratchpad}
-"""
+        main_qa_agent_executor.agent.runnable.get_prompts()[0].template.replace(
+            "Current user role is unknown", f"Current user role is: {user_role}"
         )
         return f"更新您的用户角色为{user_role}, 请问有什么可以帮到您？"
 
@@ -374,6 +228,8 @@ Observation: the result of the action
 Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
+Answer the question in Chinese.
+
 Begin!
 
 {chat_history}
@@ -391,7 +247,7 @@ prompt.input_variables = [
 
 tools = [
     RegistrationStatusTool(),
-    UpdateUserRoleTool(),
+    UpdateUserRoleTool2(),
 ]
 
 memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
@@ -401,6 +257,7 @@ agent = create_react_agent(
 main_qa_agent_executor = AgentExecutor.from_agent_and_tools(
     agent=agent, tools=tools, memory=memory, verbose=True, handle_parsing_errors=True
 )
+# pdb.set_trace()
 
 
 def check_user_role(inputs):
@@ -800,6 +657,8 @@ Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
 用中文回答。
+Answer the question in Chinese.
+
 Begin!
 
 {chat_history}

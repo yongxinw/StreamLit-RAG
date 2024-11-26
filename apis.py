@@ -123,27 +123,7 @@ def check_credit_hours_simulate(
                 return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
             return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
         return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
-    # if user_provided_loc not in user_loc and user_loc not in user_provided_loc:
-    #     match_other_loc = check_user_location(user_provided_loc, [
-    #         "开放大学",
-    #         "蟹壳云学",
-    #         "专技知到",
-    #         "文旅厅",
-    #         "教师",
-    #     ])
-    #     if match_other_loc is not None:
-    #         if user_provided_loc == "文旅厅":
-    #             return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
-    #         return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
-    #     return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
     else:
-        # if user_provided_loc in [
-        #     "开放大学",
-        #     "蟹壳云学",
-        #     "专技知到",
-        #     "文旅厅",
-        #     "教师",
-        # ]:
         match_other_loc = check_user_location(
             user_provided_loc,
             [
@@ -163,9 +143,7 @@ def check_credit_hours_simulate(
         if year_hours is None:
             return f"经查询，平台还未接收到您在{year}年度的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
         course_year_hours = year_hours.get(course_type)
-        if course_year_hours is None:
-            return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-        if len(course_year_hours) == 0:
+        if course_year_hours is None or len(course_year_hours) == 0:
             return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
         total_hours = sum([x["学时"] for x in course_year_hours])
         finished_hours = sum(
@@ -224,37 +202,26 @@ def check_credit_hours_api(
     end_index = template.find("\n", start_index)
     user_provided_loc = template[start_index:end_index].strip()
 
-    # user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
     user_loc = _get_user_location_by_id_number(user_id_number)
 
     match_location = check_user_location(user_provided_loc, [user_loc])
+    match_other_loc = check_user_location(
+        user_provided_loc,
+        [
+            "开放大学",
+            "蟹壳云学",
+            "专技知到",
+            "文旅厅",
+            "教师",
+        ],
+    )
     if match_location is None:
-        match_other_loc = check_user_location(
-            user_provided_loc,
-            [
-                "开放大学",
-                "蟹壳云学",
-                "专技知到",
-                "文旅厅",
-                "教师",
-            ],
-        )
         if match_other_loc is not None:
             if match_other_loc == "文旅厅":
                 return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
             return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
         return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
     else:
-        match_other_loc = check_user_location(
-            user_provided_loc,
-            [
-                "开放大学",
-                "蟹壳云学",
-                "专技知到",
-                "文旅厅",
-                "教师",
-            ],
-        )
         if match_other_loc is not None:
             return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
         ret_str = _get_credit_hours_by_id_number(user_id_number, year, course_type)
@@ -484,18 +451,6 @@ def check_course_purchases_api(params_dict: Dict[str, str]) -> str:
 
     else:
         return "查询失败，请稍后再试，或者联系管理员或客服人员"
-
-    # if COURSE_PURCHASES.get(user_id_number) is not None:
-    #     purchases = COURSE_PURCHASES.get(user_id_number)
-    #     if year in purchases:
-    #         if course_name in purchases[year]:
-    #             progress = purchases[year][course_name]["进度"]
-    #             if progress == 0:
-    #                 return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
-    #             return f"经查询，您已经购买{year}年度的{course_name}，您的学习进度为{progress}%。请前往专业课平台，点击右上方【我的学习】找到对应课程继续学习。"
-    #         return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
-    #     return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
-    # return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
 
 
 def check_course_refund_api(params_dict: Dict[str, str]) -> str:
