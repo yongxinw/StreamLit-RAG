@@ -67,7 +67,7 @@ _init()
 
 
 # Dynamically updated tools stay in this file.
-# UpdateUserRoleTool2, CheckUserCreditTool, UpdateUserLocTool2
+# CheckUserCreditTool, UpdateUserLocTool2, UpdateUserRoleTool2
 class CheckUserCreditTool(BaseTool):
     """根据用户回答，检查用户学时状态"""
 
@@ -240,8 +240,6 @@ def check_user_role(inputs):
 
 
 check_user_role_chain = RunnableLambda(check_user_role)
-
-
 # ===========================================================================
 #  END: MainChain - Check user role
 # ===========================================================================
@@ -377,8 +375,6 @@ def check_role_qa_router(info):
         return cont_edu_qa_agent_executor_v2
     print("默认进入专技个人")
     return individual_qa_agent_executor_v2
-
-
 # ===========================================================================
 #  END: MainChain - Check user router
 # ===========================================================================
@@ -454,7 +450,6 @@ def login_problem_router(info):
         return login_problem_ask_user_executor
 
     return login_problem_ask_user_executor
-
 
 login_problem_chain = {
     "topic": login_problem_classifier_chain,
@@ -615,7 +610,6 @@ main_credit_problem_chain = {
     "topic": check_loc_chain,
     "input": lambda x: x["input"],
 } | RunnableLambda(check_user_loc_and_route)
-
 # ===========================================================================
 #  END: CREDIT CHAIN
 # ===========================================================================
@@ -642,7 +636,6 @@ course_progress_problems_llm_chain = LLMChain(
     verbose=True,
     output_key="output",
 )
-
 # ===========================================================================
 #  END: Courese Progress
 # ===========================================================================
@@ -734,7 +727,6 @@ cannot_find_course_chain_executor = AgentExecutor.from_agent_and_tools(
     verbose=True,
     handle_parsing_errors=True,
 )
-
 # ================================================================================
 # END: Can't find Course
 # ================================================================================

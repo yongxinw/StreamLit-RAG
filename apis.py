@@ -198,7 +198,6 @@ def check_credit_hours_api(
     template = credit_problem_chain_executor.agent.runnable.get_prompts()[
         0
     ].template.lower()
-    # print(template)
     start_index = template.find("user location: ") + len("user location: ")
     end_index = template.find("\n", start_index)
     user_provided_loc = template[start_index:end_index].strip()
