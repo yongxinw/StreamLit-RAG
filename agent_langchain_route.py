@@ -109,14 +109,15 @@ class UpdateUserRoleTool(BaseTool):
         if user_role not in ["专技个人", "用人单位", "主管部门", "继续教育机构"]:
             return "您好，目前我们支持的用户类型为专技个人，用人单位，主管部门和继续教育机构，请确认您的用户类型。"
         agent_executor.agent.runnable.get_prompts()[0].template = (
-
-"""Your ONLY job is to use a tool to answer the following question.
+            """Your ONLY job is to use a tool to answer the following question.
 
 You MUST use a tool to answer the question. 
 Simply Answer "抱歉，根据我的搜索结果，我无法回答这个问题" if you don't know the answer.
 DO NOT answer the question without using a tool.
 
-Current user role is """ + user_role + """.
+Current user role is """
+            + user_role
+            + """.
 
 You have access to the following tools:
 
@@ -568,7 +569,10 @@ user_role_chain = create_react_agent(
     user_role_prompt,
 )
 user_role_chain_executor = AgentExecutor.from_agent_and_tools(
-    agent=user_role_chain, tools=user_role_tools, verbose=True, handle_parsing_errors=True
+    agent=user_role_chain,
+    tools=user_role_tools,
+    verbose=True,
+    handle_parsing_errors=True,
 )
 
 
@@ -589,7 +593,11 @@ def route(info):
         return user_role_chain_executor
     return agent_executor
 
-full_chain = {"topic": router_chain_executor, "input": lambda x: x["input"]} | RunnableLambda(route)
+
+full_chain = {
+    "topic": router_chain_executor,
+    "input": lambda x: x["input"],
+} | RunnableLambda(route)
 
 # update prompt with this: agent_executor.agent.runnable.get_prompts()[0]
 

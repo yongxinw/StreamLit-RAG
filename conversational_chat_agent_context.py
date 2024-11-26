@@ -61,17 +61,15 @@ class CheckUserCreditTool(BaseTool):
     return_direct: bool = True
 
     def _run(self, params) -> Any:
-        
-        params = params.replace("\'", "\"")
+
+        params = params.replace("'", '"')
         print(params, type(params))
         try:
             params_dict = json.loads(params)
         except json.JSONDecodeError as e:
             print(e)
             return "请指定您的身份证号和想要查询学时的年份"
-        CONTEXT_PROMPT = (
-            "You must ask the human about {context}. Reply with schema #2."
-        )
+        CONTEXT_PROMPT = "You must ask the human about {context}. Reply with schema #2."
 
         if "user_id_number" not in params_dict:
             return CONTEXT_PROMPT.format(context="身份证号")
@@ -124,14 +122,16 @@ Question: {input}
     )
 
     import ipdb
+
     ipdb.set_trace()
-    
+
     tools = [CheckUserCreditTool()]
     qa_agent = ConversationalChatAgent.from_llm_and_tools(
-        chat_llm, tools, 
+        chat_llm,
+        tools,
         # credit_problem_prompt
-        memory=memory, 
-        system_message=credit_problem_prompt.template
+        memory=memory,
+        system_message=credit_problem_prompt.template,
     )
     agent = AgentExecutor.from_agent_and_tools(
         agent=qa_agent, tools=tools, verbose=True, memory=memory

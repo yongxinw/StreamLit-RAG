@@ -28,7 +28,7 @@ class RegistrationStatusToolIndividual(BaseTool):
         except Exception:
             return "抱歉，我还没有成功识别您的身份证号码，请指定"
 
-        return apis.get_registration_status(params_dict)
+        return apis.get_registration_status_api(params_dict)
 
 
 class RegistrationStatusToolUniversal(BaseTool):
@@ -56,7 +56,7 @@ class RegistrationStatusToolUniversal(BaseTool):
         if input in ["unknown", "未知"]:
             return "抱歉，我还没有成功识别您的身份证号码，单位信用代码，或者单位名称，请指定"
 
-        return apis.get_registration_status(params_dict)
+        return apis.get_registration_status_api(params_dict)
 
 
 class RegistrationStatusToolNonIndividual(BaseTool):
@@ -82,7 +82,7 @@ class RegistrationStatusToolNonIndividual(BaseTool):
             return "抱歉，我还没有成功识别您的单位管理员身份证号或者单位名称或者统一信用代码，请指定"
         input = str(params_dict["user_id_number"])
 
-        return apis.get_registration_status(params_dict)
+        return apis.get_registration_status_api(params_dict)
 
 
 class RegistrationStatusTool(BaseTool):
@@ -107,7 +107,7 @@ class RegistrationStatusTool(BaseTool):
         except ValueError:
             return "请指定您或者管理员身份证号"
 
-        return apis.get_registration_status(params_dict)
+        return apis.get_registration_status_api(params_dict)
 
 
 class RefundTool(BaseTool):
@@ -150,23 +150,7 @@ class RefundTool(BaseTool):
         if len(params_dict["course_name"]) < 2:
             return "您问的课程名称是什么？如：新闻专业课培训班"
 
-        user_id_number = params_dict["user_id_number"]
-
-        year = params_dict["year"]
-        year = re.search(r"\d+", year).group()
-
-        course_name = params_dict["course_name"]
-        if COURSE_PURCHASES.get(user_id_number) is not None:
-            purchases = COURSE_PURCHASES.get(user_id_number)
-            if year in purchases:
-                if course_name in purchases[year]:
-                    progress = purchases[year][course_name]["进度"]
-                    if progress == 0:
-                        return "经查询您的这个课程没有学习，您可以点击右上方【我的学习】，选择【我的订单】，找到对应课程点击【申请售后】，费用在1个工作日会原路退回。"
-                    return f"经查询，您的课程{course_name}学习进度为{progress}%，可以按照未学的比例退费，如需退费请联系平台的人工热线客服或者在线客服进行反馈。"
-                return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
-            return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
-        return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+        return apis.check_course_refund_api(params_dict)
 
 
 class CheckPurchaseTool(BaseTool):
@@ -210,20 +194,4 @@ class CheckPurchaseTool(BaseTool):
         if len(params_dict["course_name"]) < 2:
             return "请您提供您想要查询的课程的正确名称。如：新闻专业课培训班"
 
-        user_id_number = params_dict["user_id_number"]
-
-        year = params_dict["year"]
-        year = re.search(r"\d+", year).group()
-
-        course_name = params_dict["course_name"]
-        if COURSE_PURCHASES.get(user_id_number) is not None:
-            purchases = COURSE_PURCHASES.get(user_id_number)
-            if year in purchases:
-                if course_name in purchases[year]:
-                    progress = purchases[year][course_name]["进度"]
-                    if progress == 0:
-                        return f"经查询，您已经购买{year}年度的{course_name}，请前往专业课平台，点击右上方【我的学习】找到对应课程直接学习。"
-                    return f"经查询，您已经购买{year}年度的{course_name}，您的学习进度为{progress}%。请前往专业课平台，点击右上方【我的学习】找到对应课程继续学习。"
-                return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
-            return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
-        return f"经查询，您在{year}年度，没有购买{course_name}，请您确认您的课程名称、年度、身份证号是否正确。"
+        return apis.check_course_purchases_api(params_dict)

@@ -1,7 +1,7 @@
 DASHSCOPE_API_KEY = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
 
-#"qwen-max"， "qwen-plus", "qwen-turbo"
-LLM_NAME="qwen-turbo"
+# "qwen-max"， "qwen-plus", "qwen-turbo"
+LLM_NAME = "qwen-turbo"
 
 REGISTRATION_STATUS = {
     "372323199509260348": {
@@ -105,8 +105,7 @@ LOC_STR = """
 12、山东省：山东省专业技术人员继续教育公共服务平台（山东省公共服务平台，山东省平台，山东省继续继续教育平台）\n\n
 """
 
-SIM_DATA = \
-    """
+SIM_DATA = """
     专技个人注册状态 = {
                 "372323199509260348": {
                     "状态": "已注册",

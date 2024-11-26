@@ -5,7 +5,11 @@ import json
 import operator
 import streamlit as st
 
-from langchain_core.runnables import RunnableLambda, RunnablePassthrough, RunnableParallel
+from langchain_core.runnables import (
+    RunnableLambda,
+    RunnablePassthrough,
+    RunnableParallel,
+)
 from langchain.tools.render import render_text_description
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import ChatPromptTemplate
@@ -26,6 +30,7 @@ from statics import DASHSCOPE_API_KEY, LLM_NAME
 
 
 os.environ["DASHSCOPE_API_KEY"] = DASHSCOPE_API_KEY
+
 
 def create_react_agent_with_memory(tools, prompt_str=None):
     if prompt_str is None:
@@ -70,9 +75,7 @@ def create_react_agent_with_memory(tools, prompt_str=None):
         "chat_history",
     ]
 
-    memory = ConversationBufferMemory(
-        memory_key="chat_history", input_key="input"
-    )
+    memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
     agent = create_react_agent(
         Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
         tools=tools,
@@ -87,6 +90,7 @@ def create_react_agent_with_memory(tools, prompt_str=None):
     )
     return agent_executor
 
+
 def create_dummy_agent(dummy_message):
     dummy_agent = create_react_agent(
         Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3}),
@@ -100,6 +104,7 @@ def create_dummy_agent(dummy_message):
         handle_parsing_errors=True,
     )
     return dummy_agent_executor
+
 
 merge_results_prompt = PromptTemplate.from_template(
     """根据提供的信息，回答用户的提问“{input}”。遵循以下步骤：
@@ -123,20 +128,29 @@ merge_results_chain = LLMChain(
     verbose=True,
 )
 
+
 def merge_results(inp):
-    print('input: ', inp)
-    results, qa_map_path, orig_question = inp['results']['tool_chain'], inp['qa_map_path'], inp['orig_question']
-    with open(qa_map_path,'r') as f:
+    print("input: ", inp)
+    results, qa_map_path, orig_question = (
+        inp["results"]["tool_chain"],
+        inp["qa_map_path"],
+        inp["orig_question"],
+    )
+    with open(qa_map_path, "r") as f:
         qa_map = json.load(f)
 
     print(results)
-    question_list = [res.strip() for res in results.split('\n') if len(res.strip()) > 0]
+    question_list = [res.strip() for res in results.split("\n") if len(res.strip()) > 0]
     print("length of the answer: ", len(question_list))
     print(question_list)
-    merged_answers = '\n\n'.join([qa_map[q] for q in question_list])
+    merged_answers = "\n\n".join([qa_map[q] for q in question_list])
     print(merged_answers)
     print("input: ", RunnablePassthrough())
-    return {"context": RunnableLambda(lambda x: {"output": merged_answers}), "input": RunnableLambda(lambda x: orig_question)} | merge_results_chain
+    return {
+        "context": RunnableLambda(lambda x: {"output": merged_answers}),
+        "input": RunnableLambda(lambda x: orig_question),
+    } | merge_results_chain
+
 
 def create_atomic_retriever_agent(tools, qa_map_path, system_prompt=None):
 
@@ -160,7 +174,7 @@ def create_atomic_retriever_agent(tools, qa_map_path, system_prompt=None):
     prompt = ChatPromptTemplate.from_messages(
         [("system", system_prompt), ("user", "{input}")]
     )
-    
+
     model = Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3})
     chain = prompt | model | JsonOutputParser()
 
@@ -169,44 +183,74 @@ def create_atomic_retriever_agent(tools, qa_map_path, system_prompt=None):
         print(model_output)
         chosen_tool = tool_map[model_output["tool_use"]["name"]]
         if "qa_engine" in chosen_tool.name:
+
             def _parse_retreiver_inputs(model_output):
                 return model_output["question"]["input"]
+
             def _parse_retreiver_outputs(model_output):
                 # model_output is a string with top k matches.
-                return {'results': model_output, 'qa_map_path': qa_map_path, 'orig_question': model_output['question']['question']['input']}
+                return {
+                    "results": model_output,
+                    "qa_map_path": qa_map_path,
+                    "orig_question": model_output["question"]["question"]["input"],
+                }
+
             run_chosen_tool = RunnableParallel(
                 question=RunnablePassthrough(),
-                tool_chain=_parse_retreiver_inputs | chosen_tool)
-            return run_chosen_tool | _parse_retreiver_outputs | RunnableLambda(merge_results) | output_parser_from_merged_results
+                tool_chain=_parse_retreiver_inputs | chosen_tool,
+            )
+            return (
+                run_chosen_tool
+                | _parse_retreiver_outputs
+                | RunnableLambda(merge_results)
+                | output_parser_from_merged_results
+            )
 
-        return {"params": RunnableLambda(lambda x: x["tool_use"]["arguments"])} | chosen_tool | output_parser
+        return (
+            {"params": RunnableLambda(lambda x: x["tool_use"]["arguments"])}
+            | chosen_tool
+            | output_parser
+        )
 
-    runnable = RunnableParallel(
-        question=RunnablePassthrough(),
-        tool_use=chain
-    )
+    runnable = RunnableParallel(question=RunnablePassthrough(), tool_use=chain)
     return runnable | tool_chain
 
 
-def create_atomic_retriever_agent_single_tool_qa_map(tool, qa_map_path, system_prompt=None):
+def create_atomic_retriever_agent_single_tool_qa_map(
+    tool, qa_map_path, system_prompt=None
+):
     """Only run qa map with this function.
     If you don't have extra request from the users but just retrieval, use this one.
     """
+
     def _parse_retreiver_outputs(model_output):
         # model_output is a string with top k matches.
-        return {'results': model_output, 'qa_map_path': qa_map_path, 'orig_question': model_output['question']['input']}
+        return {
+            "results": model_output,
+            "qa_map_path": qa_map_path,
+            "orig_question": model_output["question"]["input"],
+        }
+
     run_chosen_tool = RunnableParallel(
         question=RunnablePassthrough(),
-        tool_chain=RunnableLambda(lambda x: x["input"]) | tool)
+        tool_chain=RunnableLambda(lambda x: x["input"]) | tool,
+    )
 
-    return run_chosen_tool | _parse_retreiver_outputs | RunnableLambda(merge_results) | output_parser_from_merged_results
+    return (
+        run_chosen_tool
+        | _parse_retreiver_outputs
+        | RunnableLambda(merge_results)
+        | output_parser_from_merged_results
+    )
 
 
 def output_parser_from_merged_results(model_output):
-    return {"output": model_output['text']}
+    return {"output": model_output["text"]}
+
 
 def output_parser(model_output):
     return {"output": model_output}
+
 
 def create_single_function_call_agent(tool, system_prompt=None):
     rendered_tools = render_text_description([tool])
@@ -225,13 +269,22 @@ def create_single_function_call_agent(tool, system_prompt=None):
 
     model = Tongyi(model_name=LLM_NAME, model_kwargs={"temperature": 0.3})
     chain = prompt | model | JsonOutputParser()
-    return chain | {"params": RunnableLambda(lambda x: x["arguments"])} | tool | output_parser
+    return (
+        chain
+        | {"params": RunnableLambda(lambda x: x["arguments"])}
+        | tool
+        | output_parser
+    )
+
 
 def check_user_location(user_provided_location: str, locations: List[str]):
-    """ Check if the user_provided_location overlaps with the items in locations. Return the item with max overlap using fuzzy matching.
-    """
-    location_scores = {loc: fuzz.ratio(user_provided_location, loc) for loc in locations}
-    sorted_scores = sorted(location_scores.items(), key=operator.itemgetter(1), reverse=True)
+    """Check if the user_provided_location overlaps with the items in locations. Return the item with max overlap using fuzzy matching."""
+    location_scores = {
+        loc: fuzz.ratio(user_provided_location, loc) for loc in locations
+    }
+    sorted_scores = sorted(
+        location_scores.items(), key=operator.itemgetter(1), reverse=True
+    )
     filtered_scores = [(loc, score) for loc, score in sorted_scores if score > 0]
     if len(filtered_scores) == 0:
         return None

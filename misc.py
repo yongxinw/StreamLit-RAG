@@ -5,7 +5,10 @@ from langchain.tools import BaseTool
 from langchain.memory import ConversationBufferMemory
 from langchain_community.llms import Tongyi
 from langchain_core.prompts import PromptTemplate
-from streamlit_agent_langchain_agentic_policy_v2 import  main_qa_agent_executor, UpdateUserRoleTool
+from streamlit_agent_langchain_agentic_policy_v2 import (
+    main_qa_agent_executor,
+    UpdateUserRoleTool,
+)
 
 
 # ================================================================================

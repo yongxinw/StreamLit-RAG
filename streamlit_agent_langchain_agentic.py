@@ -1192,10 +1192,14 @@ modify_info_chain = {
 
 # 注册问题咨询
 individual_registration_agent_executor = create_react_agent_with_memory(
-    tools=[individual_registration_tool, ]
+    tools=[
+        individual_registration_tool,
+    ]
 )
 employing_unit_registration_agent_executor = create_react_agent_with_memory(
-    tools=[employing_unit_registration_tool, ]
+    tools=[
+        employing_unit_registration_tool,
+    ]
 )
 supervisory_department_registration_agent_executor = create_react_agent_with_memory(
     tools=[
@@ -1203,7 +1207,9 @@ supervisory_department_registration_agent_executor = create_react_agent_with_mem
     ]
 )
 cont_edu_registration_agent_executor = create_react_agent_with_memory(
-    tools=[cont_edu_registration_tool, ]
+    tools=[
+        cont_edu_registration_tool,
+    ]
 )
 
 
@@ -1300,7 +1306,7 @@ def login_problem_router(info):
     elif "无法登录" in info["topic"]["text"]:
         print("无法登录")
         return login_problem_ask_user_executor
-    
+
     return login_problem_ask_user_executor
 
 
@@ -1476,9 +1482,7 @@ other_questions_agent_executor = create_react_agent_with_memory(
 )
 
 # 济宁市
-jining_agent_executor = create_react_agent_with_memory(
-    tools=[jn_city_tool]
-)
+jining_agent_executor = create_react_agent_with_memory(tools=[jn_city_tool])
 
 # 学时不显示等问题
 credit_problem_prompt = PromptTemplate.from_template(
@@ -1926,7 +1930,7 @@ def check_is_credit_record_router(info):
     if "济宁市：如何报班、报名" in info["topic"]["text"]:
         print("济宁市：如何报班、报名")
         return register_class_llm_chain
-    
+
     if "济宁市：课程进度" in info["topic"]["text"]:
         print("济宁市：课程进度")
         return course_progress_problems_llm_chain
@@ -2006,11 +2010,11 @@ def check_is_credit_record_router(info):
     if "济宁市" in info["topic"]["text"]:
         print("济宁市")
         return jining_agent_executor  # TODO: Add the chain for Jinin city
-    
+
     if "other" in info["topic"]["text"]:
         print("other")
         return other_questions_agent_executor
-    
+
     if "退休人员" in info["topic"]["text"]:
         print("退休人员")
         return other_questions_agent_executor
@@ -2018,7 +2022,7 @@ def check_is_credit_record_router(info):
     if "济宁市" in info["topic"]["text"]:
         print("济宁市")
         return jining_agent_executor
-    
+
     print("unknown")
     return other_questions_agent_executor
 

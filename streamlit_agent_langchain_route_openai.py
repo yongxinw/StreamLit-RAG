@@ -481,8 +481,8 @@ memory = ConversationBufferMemory(memory_key="chat_history", input_key="input")
 agent = create_react_agent(
     Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3}),
     # ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.3),
-    tools, 
-    prompt
+    tools,
+    prompt,
 )
 
 # Main QA agent

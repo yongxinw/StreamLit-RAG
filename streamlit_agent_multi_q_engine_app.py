@@ -168,8 +168,8 @@ def update_user_role(input: str = "123"):
         "When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly."
         "When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n"
         "Current user role is " + USER_ROLE + "\n\n"
-        'If the user is unsure of whether they have registered, you MUST ask them to provide their ID Card number OR the administrator ID Card number.\n'
-        'THEN use the right tool to check the registration status.\n\n'
+        "If the user is unsure of whether they have registered, you MUST ask them to provide their ID Card number OR the administrator ID Card number.\n"
+        "THEN use the right tool to check the registration status.\n\n"
         "If the user has problems logging in, ask them to provide what prompts they are seeing\n\n"
         "If the user cannot find contact to their administrator or wants to look for admin contacts, you MUST ask them to provide their ID Card number\n"
         "THEN use the right tool to find the contact information.\n\n"

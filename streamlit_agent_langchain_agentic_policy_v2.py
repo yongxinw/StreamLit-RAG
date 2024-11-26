@@ -57,7 +57,7 @@ def _init():
                 测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。测试模拟数据如下：\n\n
                 {SIM_DATA}
         """,
-            }#TODO: ask user type here?
+            }  # TODO: ask user type here?
         ]
 
 
@@ -111,87 +111,7 @@ class CheckUserCreditTool(BaseTool):
         if len(params_dict["course_type"]) < 2:
             return "请确认您要查询的是公需课还是专业课"
 
-        user_id_number = str(params_dict["user_id_number"])
-        year = re.search(r"\d+", str(params_dict["year"])).group()
-        course_type = str(params_dict["course_type"])
-
-        template = credit_problem_chain_executor.agent.runnable.get_prompts()[
-            0
-        ].template.lower()
-        start_index = template.find("user location: ") + len("user location: ")
-        end_index = template.find("\n", start_index)
-        user_provided_loc = template[start_index:end_index].strip()
-
-        user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
-
-        match_location = check_user_location(user_provided_loc, [user_loc])
-        if match_location is None:
-            match_other_loc = check_user_location(
-                user_provided_loc,
-                [
-                    "开放大学",
-                    "蟹壳云学",
-                    "专技知到",
-                    "文旅厅",
-                    "教师",
-                ],
-            )
-            if match_other_loc is not None:
-                if match_other_loc == "文旅厅":
-                    return "本平台只是接收方，学时如果和您实际不符，建议您先咨询您的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
-                return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
-            return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
-        else:
-            match_other_loc = check_user_location(
-                user_provided_loc,
-                [
-                    "开放大学",
-                    "蟹壳云学",
-                    "专技知到",
-                    "文旅厅",
-                    "教师",
-                ],
-            )
-            if match_other_loc is not None:
-                return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
-            hours = CREDIT_HOURS.get(user_id_number)
-            if hours is None:
-                return "经查询，平台还未接收到您的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-            year_hours = hours.get(year)
-            if year_hours is None:
-                return f"经查询，平台还未接收到您在{year}年度的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-            course_year_hours = year_hours.get(course_type)
-            if course_year_hours is None:
-                return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-            if len(course_year_hours) == 0:
-                return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-            total_hours = sum([x["学时"] for x in course_year_hours])
-            finished_hours = sum(
-                [
-                    x["学时"]
-                    for x in course_year_hours
-                    if x["进度"] == 100 and x["考核"] == "合格"
-                ]
-            )
-            unfinished_courses = [
-                f"{x['课程名称']}完成了{x['进度']}%"
-                for x in course_year_hours
-                if x["进度"] < 100
-            ]
-            untested_courses = [
-                x["课程名称"] for x in course_year_hours if x["考核"] == "未完成"
-            ]
-            unfinished_str = "  \n\n".join(unfinished_courses)
-            untested_str = "  \n\n".join(untested_courses)
-
-            res_str = f"经查询，您在{year}年度{course_type}的学时情况如下：  \n\n"
-            res_str += f"您报名的总学时：{total_hours}  \n\n"
-            res_str += f"已完成学时：{finished_hours}  \n\n"
-            res_str += f"其中，以下几节课进度还没有达到100%，每节课进度看到100%后才能计入学时  \n\n"
-            res_str += unfinished_str + "  \n\n"
-            res_str += f"以下几节课还没有完成考试，考试通过后才能计入学时  \n\n"
-            res_str += untested_str + "  \n\n"
-            return res_str
+        return apis.check_credit_hours_api(params_dict, credit_problem_chain_executor)
 
 
 class UpdateUserLocTool2(BaseTool):
@@ -492,6 +412,7 @@ def check_user_role(inputs):
     inputs["output"] = result
     return inputs
 
+
 check_user_role_chain = RunnableLambda(check_user_role)
 
 
@@ -610,6 +531,7 @@ update_user_role_agent = create_atomic_retriever_agent(
     qa_map_path="./policies_v2/jining_qa_map.json",
 )
 
+
 def check_role_qa_router(info):
     print(info["topic"])
     if "unknown" in info["topic"]["output"].lower():
@@ -629,6 +551,8 @@ def check_role_qa_router(info):
         return cont_edu_qa_agent_executor_v2
     print("默认进入专技个人")
     return individual_qa_agent_executor_v2
+
+
 # ===========================================================================
 #  END: MainChain - Check user router
 # ===========================================================================
@@ -722,6 +646,7 @@ def login_problem_router(info):
 
     return login_problem_ask_user_executor
 
+
 login_problem_chain = {
     "topic": login_problem_classifier_chain,
     "input": lambda x: x["input"],
@@ -783,6 +708,7 @@ Begin!
     output_key="output",
 )
 
+
 def forgot_password_router(info):
     print(info["topic"])
     if "忘记密码" in info["topic"]["text"]:
@@ -804,6 +730,7 @@ def forgot_password_router(info):
         print("改密码怎么不行")
         return forgot_password_agent_executor
     return forgot_password_ask_user_executor
+
 
 forgot_password_chain = {
     "topic": forgot_password_classifier_chain,
@@ -843,6 +770,7 @@ You MUST use a tool and generate a response based on tool's output.
 DO NOT hallucinate!!!! 
 DO NOT Assume any user inputs. ALWAYS ask the user for more information if needed.
 DO NOT Assume year, course_type, or user_id_number, ALWAYS ask if needed.
+Use chinese 用中文回答。
 
 Note that you may need to translate user inputs. Here are a few examples for translating user inputs:
 - user: "公需", output: "公需课"
@@ -871,6 +799,7 @@ Observation: the result of the action
 Thought: I now know the final answer
 Final Answer: the final answer to the original input question
 
+用中文回答。
 Begin!
 
 {chat_history}
@@ -907,6 +836,7 @@ credit_problem_chain_executor = AgentExecutor.from_agent_and_tools(
 # update user location agent
 update_user_location_agent = create_single_function_call_agent(UpdateUserLocTool2())
 
+
 def check_user_loc_and_route(info):
     print(info["topic"])
     if "unknown" in info["topic"]["output"].lower():
@@ -914,6 +844,7 @@ def check_user_loc_and_route(info):
         return update_user_location_agent
     print("entering credit_problem_chain")
     return credit_problem_chain_executor
+
 
 def check_user_loc(inputs):
     template = credit_problem_chain_executor.agent.runnable.get_prompts()[
@@ -1159,9 +1090,9 @@ cannot_find_course_chain_executor = AgentExecutor.from_agent_and_tools(
 # ================================================================================
 
 
-#********************************************************************************
+# ********************************************************************************
 # MAIN ENTRY POINT
-#********************************************************************************
+# ********************************************************************************
 main_question_classifier_template = """根据用户的输入 input 以及对话历史记录 chat_history，判定用户问的内容属于以下哪一类： `学时没显示` 或者 `学时有问题` 或者 `济宁市：如何报班、报名` 或者 `济宁市：课程进度不对` 或者 `济宁市：多个设备，其他地方登录` 或者 `济宁市：课程退款退费，课程买错了` 或者 `济宁市：课程找不到，课程没有了` 或者 `无法登录` 或者 `忘记密码` 或者 `找回密码` 或者 `济宁市` 或者 `注册` 或者 `审核` 或者 `学时对接` 或者 `学时申报` 或者 `学时审核` 或者 `系统操作` 或者 `修改信息` 或者 `其他`.
 
 # 不要回答用户的问题。仅把用户的问题归类为 `学时没显示` 或 `学时有问题` 或 `济宁市：课程进度不对` 或 `济宁市：多个设备，其他地方登录` 或 `济宁市：课程退款退费，课程买错了` 或 `济宁市：课程找不到，课程没有了` 或 `无法登录` 或 `忘记密码` 或 `找回密码` 或 `济宁市` 或 `注册` 或 `审核` 或 `学时对接` 或 `学时申报` 或 `学时审核` 或 `系统操作` 或 `修改信息` 或 `其他`.
@@ -1298,6 +1229,7 @@ def main_question_classifier_and_route(info):
 
     print("unknown")
     return qa_chain_v2
+
 
 # Main chain.
 full_chain = {

@@ -12,17 +12,28 @@ from llama_index.tools import BaseTool, FunctionTool, QueryEngineTool, ToolMetad
 from llama_index.prompts import PromptTemplate
 from statics import REGISTRATION_STATUS
 
+
 def display_prompt_dict(prompts_dict):
     for k, p in prompts_dict.items():
         text_md = f"**Prompt Key**: {k}\n" f"**Text:** \n"
         print(text_md)
         print(p.get_template())
 
-st.set_page_config(page_title="Chat with the Streamlit docs, powered by LlamaIndex", page_icon="🦙", layout="centered", initial_sidebar_state="auto", menu_items=None)
+
+st.set_page_config(
+    page_title="Chat with the Streamlit docs, powered by LlamaIndex",
+    page_icon="🦙",
+    layout="centered",
+    initial_sidebar_state="auto",
+    menu_items=None,
+)
 openai.api_key = st.secrets.openai_key
 # openai.api_key = "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"
 st.title("Chat with the Streamlit docs, powered by LlamaIndex 💬🦙")
-st.info("Check out the full tutorial to build this app in our [blog post](https://blog.streamlit.io/build-a-chatbot-with-custom-data-sources-powered-by-llamaindex/)", icon="📃")
+st.info(
+    "Check out the full tutorial to build this app in our [blog post](https://blog.streamlit.io/build-a-chatbot-with-custom-data-sources-powered-by-llamaindex/)",
+    icon="📃",
+)
 
 if "messages" not in st.session_state.keys():  # Initialize the chat messages history
     st.session_state.messages = [
@@ -33,33 +44,33 @@ if "messages" not in st.session_state.keys():  # Initialize the chat messages hi
     ]
 
 agent_template_str = (
-    '\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n'
-    '## Tools\nYou have access to a wide variety of tools. You are responsible for using\n'
-    'the tools in any sequence you deem appropriate to complete the task at hand.\n'
-    'This may require breaking the task into subtasks and using different tools\n'
-    'to complete each subtask.\n\n'
-    'You have access to the following tools:\n{tool_desc}\n\n## Output Format\n'
-    'To answer the question, please use the following format.\n\n'
-    '```\nThought: I need to use a tool to help me answer the question.\n'
-    'Action: tool name (one of {tool_names}) if using a tool.\n'
+    "\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n"
+    "## Tools\nYou have access to a wide variety of tools. You are responsible for using\n"
+    "the tools in any sequence you deem appropriate to complete the task at hand.\n"
+    "This may require breaking the task into subtasks and using different tools\n"
+    "to complete each subtask.\n\n"
+    "You have access to the following tools:\n{tool_desc}\n\n## Output Format\n"
+    "To answer the question, please use the following format.\n\n"
+    "```\nThought: I need to use a tool to help me answer the question.\n"
+    "Action: tool name (one of {tool_names}) if using a tool.\n"
     'Action Input: the input to the tool, in a JSON format representing the kwargs (e.g. {{"input": "hello world", "num_beams": 5}})\n'
-    '```\n\nPlease ALWAYS start with a Thought.\n\n'
-    'Please use a valid JSON format for the Action Input. Do NOT do this {{\'input\': \'hello world\', \'num_beams\': 5}}.\n\n'
-    'If this format is used, the user will respond in the following format:\n\n'
-    '```\nObservation: tool response\n```\n\n'
-    'You should keep repeating the above format until you have enough information\n'
-    'to answer the question without using any more tools. At that point, you MUST respond\n'
-    'in the one of the following two formats:\n\n```\n'
-    'Thought: I can answer without using any more tools.\n'
-    'Answer: [your answer here]\n```\n\n```\n'
-    'Thought: I cannot answer the question with the provided tools.\n'
-    'Answer: Sorry, I cannot answer your query.\n```\n\n'
-    'ALWAYS check user role from chat history before any actions.\n'
-    'When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly.'
-    'When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n'
-    'Current user role is unknown\n\n'
-    '## Current Conversation\n'
-    'Below is the current conversation consisting of interleaving human and assistant messages.\n\n'
+    "```\n\nPlease ALWAYS start with a Thought.\n\n"
+    "Please use a valid JSON format for the Action Input. Do NOT do this {{'input': 'hello world', 'num_beams': 5}}.\n\n"
+    "If this format is used, the user will respond in the following format:\n\n"
+    "```\nObservation: tool response\n```\n\n"
+    "You should keep repeating the above format until you have enough information\n"
+    "to answer the question without using any more tools. At that point, you MUST respond\n"
+    "in the one of the following two formats:\n\n```\n"
+    "Thought: I can answer without using any more tools.\n"
+    "Answer: [your answer here]\n```\n\n```\n"
+    "Thought: I cannot answer the question with the provided tools.\n"
+    "Answer: Sorry, I cannot answer your query.\n```\n\n"
+    "ALWAYS check user role from chat history before any actions.\n"
+    "When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly."
+    "When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n"
+    "Current user role is unknown\n\n"
+    "## Current Conversation\n"
+    "Below is the current conversation consisting of interleaving human and assistant messages.\n\n"
 )
 policy_engine_tmpl_str = (
     "注意：回答问题前，请先从用户对话中尝试确定用户角色，若无法推测，则询问用户角色，不要推测用户角色，回答问题时请保持技术性和基于事实，不要产生幻觉。\n"
@@ -103,6 +114,7 @@ llm = OpenAI(
     system_prompt="你是一个关于大众云学的专家，你了解关于大众云学的所有问题。用户角色未知时，请先询问角色。假设所有的问题都与大众云学有关。保持你的答案技术性和基于事实——不要产生幻觉。",
 )
 
+
 @st.cache_data()
 def load_data():
     reader = SimpleDirectoryReader(input_dir="./policies", recursive=True)
@@ -140,7 +152,9 @@ def update_user_role(input: str = "123"):
     )
     print(USER_ROLE)
     template_str = policy_engine_tmpl_str.format(
-        context_str="{context_str}", user_role=USER_ROLE if USER_ROLE is not None else "未知", query_str="{query_str}"
+        context_str="{context_str}",
+        user_role=USER_ROLE if USER_ROLE is not None else "未知",
+        query_str="{query_str}",
     )
     print(template_str)
     policy_engine_tmpl = PromptTemplate(template_str)
@@ -149,39 +163,42 @@ def update_user_role(input: str = "123"):
     )
 
     agent_template_str = (
-        '\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n'
-        '## Tools\nYou have access to a wide variety of tools. You are responsible for using\n'
-        'the tools in any sequence you deem appropriate to complete the task at hand.\n'
-        'This may require breaking the task into subtasks and using different tools\n'
-        'to complete each subtask.\n\n'
-        'You have access to the following tools:\n{tool_desc}\n\n## Output Format\n'
-        'To answer the question, please use the following format.\n\n'
-        '```\nThought: I need to use a tool to help me answer the question.\n'
-        'Action: tool name (one of {tool_names}) if using a tool.\n'
+        "\nYou are designed to help with a variety of tasks, from answering questions     to providing summaries to other types of analyses. \n\n"
+        "## Tools\nYou have access to a wide variety of tools. You are responsible for using\n"
+        "the tools in any sequence you deem appropriate to complete the task at hand.\n"
+        "This may require breaking the task into subtasks and using different tools\n"
+        "to complete each subtask.\n\n"
+        "You have access to the following tools:\n{tool_desc}\n\n## Output Format\n"
+        "To answer the question, please use the following format.\n\n"
+        "```\nThought: I need to use a tool to help me answer the question.\n"
+        "Action: tool name (one of {tool_names}) if using a tool.\n"
         'Action Input: the input to the tool, in a JSON format representing the kwargs (e.g. {{"input": "hello world", "num_beams": 5}})\n'
-        '```\n\nPlease ALWAYS start with a Thought.\n\n'
-        'Please use a valid JSON format for the Action Input. Do NOT do this {{\'input\': \'hello world\', \'num_beams\': 5}}.\n\n'
-        'If this format is used, the user will respond in the following format:\n\n'
-        '```\nObservation: tool response\n```\n\n'
-        'You should keep repeating the above format until you have enough information\n'
-        'to answer the question without using any more tools. At that point, you MUST respond\n'
-        'in the one of the following two formats:\n\n```\n'
-        'Thought: I can answer without using any more tools.\n'
-        'Answer: [your answer here]\n```\n\n```\n'
-        'Thought: I cannot answer the question with the provided tools.\n'
-        'Answer: Sorry, I cannot answer your query.\n```\n\n'
-        'ALWAYS check user role from chat history before any actions.\n'
-        'When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly.'
-        'When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n'
-        'Current user role is' + USER_ROLE + '\n\n'
-        'If the user is unsure of whether they have registered, you MUST ask them to provide the administrator ID number and THEN use the right tool to check the registration status.\n\n'
-        '## IMPORTANT: \n'
-        'All conversation is in Chinese. Please use Chinese for all conversation.\n\n'
-        '## Current Conversation\n'
-        'Below is the current conversation consisting of interleaving human and assistant messages.\n\n'
+        "```\n\nPlease ALWAYS start with a Thought.\n\n"
+        "Please use a valid JSON format for the Action Input. Do NOT do this {{'input': 'hello world', 'num_beams': 5}}.\n\n"
+        "If this format is used, the user will respond in the following format:\n\n"
+        "```\nObservation: tool response\n```\n\n"
+        "You should keep repeating the above format until you have enough information\n"
+        "to answer the question without using any more tools. At that point, you MUST respond\n"
+        "in the one of the following two formats:\n\n```\n"
+        "Thought: I can answer without using any more tools.\n"
+        "Answer: [your answer here]\n```\n\n```\n"
+        "Thought: I cannot answer the question with the provided tools.\n"
+        "Answer: Sorry, I cannot answer your query.\n```\n\n"
+        "ALWAYS check user role from chat history before any actions.\n"
+        "When user role is unknown, you MUST ask the user for his role based on policy engine output and MUST NOT use any tools to infer user role or ask directly."
+        "When user has provided role information, use the correct tool to update user role and proceed with the answering questions.\n"
+        "Current user role is" + USER_ROLE + "\n\n"
+        "If the user is unsure of whether they have registered, you MUST ask them to provide the administrator ID number and THEN use the right tool to check the registration status.\n\n"
+        "## IMPORTANT: \n"
+        "All conversation is in Chinese. Please use Chinese for all conversation.\n\n"
+        "## Current Conversation\n"
+        "Below is the current conversation consisting of interleaving human and assistant messages.\n\n"
     )
-    agent.update_prompts({"agent_worker:system_prompt": PromptTemplate(agent_template_str)})
+    agent.update_prompts(
+        {"agent_worker:system_prompt": PromptTemplate(agent_template_str)}
+    )
     return "user role updated"
+
 
 def lookup_by_id(input: str = "123"):
     """
@@ -191,15 +208,19 @@ def lookup_by_id(input: str = "123"):
         return REGISTRATION_STATUS.get(input)
     return "经查询，您尚未在大众云学平台上注册"
 
+
 multiply_tool = FunctionTool.from_defaults(
     fn=multiply,
-    tool_metadata=ToolMetadata(name="multiply", description="计算两个数的乘积并返回结果。"),
+    tool_metadata=ToolMetadata(
+        name="multiply", description="计算两个数的乘积并返回结果。"
+    ),
 )
 
 update_user_role_tool = FunctionTool.from_defaults(
     fn=update_user_role,
     tool_metadata=ToolMetadata(
-        name="update_role", description="根据语境，更新用户角色以及对应的回答模板，以便更好地回答用户问题。"
+        name="update_role",
+        description="根据语境，更新用户角色以及对应的回答模板，以便更好地回答用户问题。",
     ),
 )
 
@@ -235,7 +256,7 @@ tools = [
     policy_query_tool,
     # multiply_tool,
     update_user_role_tool,
-    lookup_by_id_tool
+    lookup_by_id_tool,
 ]
 
 agent = ReActAgent.from_tools(tools=tools, llm=llm, verbose=True)

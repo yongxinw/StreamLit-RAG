@@ -18,22 +18,22 @@ import json
 import os
 
 # Load the content of the uploaded Markdown file to examine its format
-file_names  = [
-                'cont_edu_qa.md',
-                'individual_qa.md',
-                'supervisory_dept_qa.md',
-                'employing_unit_qa.md',
-                'jining_qa.md',
-                'login_problems_details_qa.md',
-                'forgot_password_qa.md'
-                ]
+file_names = [
+    "cont_edu_qa.md",
+    "individual_qa.md",
+    "supervisory_dept_qa.md",
+    "employing_unit_qa.md",
+    "jining_qa.md",
+    "login_problems_details_qa.md",
+    "forgot_password_qa.md",
+]
 
-root_path = 'policies_v2'
+root_path = "policies_v2"
 
 for file_name in file_names:
 
     file_path = os.path.join(root_path, file_name)
-    with open(file_path, 'r', encoding='utf-8') as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         content = file.readlines()
 
     # print(content)
@@ -47,7 +47,7 @@ for file_name in file_names:
     last_question_key = None
     all_question_keys = []
     for line in content:
-        if line.strip().startswith('回复'):
+        if line.strip().startswith("回复"):
             # Process answer lines
             answer = line.strip()[3:]  # Remove '回复：' part
             if last_question:
@@ -64,14 +64,13 @@ for file_name in file_names:
                 # print(len(questions))
 
     # Save the questions-only file
-    output_q_name = '_'.join(file_name.split('_')[:-1]) + '_q.md'
+    output_q_name = "_".join(file_name.split("_")[:-1]) + "_q.md"
     questions_file_path = os.path.join(root_path, output_q_name)
-    with open(questions_file_path, 'w', encoding='utf-8') as q_file:
+    with open(questions_file_path, "w", encoding="utf-8") as q_file:
         q_file.write("\n\n".join(questions))
 
     # Save the question-answer map file
-    output_qa_map_name = '_'.join(file_name.split('_')[:-1]) + '_qa_map.json'
+    output_qa_map_name = "_".join(file_name.split("_")[:-1]) + "_qa_map.json"
     qa_map_file_path = os.path.join(root_path, output_qa_map_name)
-    with open(qa_map_file_path, 'w', encoding='utf-8') as qa_file:
+    with open(qa_map_file_path, "w", encoding="utf-8") as qa_file:
         json.dump(qa_map, qa_file, ensure_ascii=False, indent=2)
-

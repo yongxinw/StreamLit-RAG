@@ -118,9 +118,7 @@ if "messages" not in st.session_state.keys():  # Initialize the chat messages hi
                     },
                 }
             }
-            """
-            
-            ,
+            """,
         }
     ]
 
@@ -394,11 +392,23 @@ class CheckUserCreditTool(BaseTool):
         user_loc = REGISTRATION_STATUS[user_id_number]["注册地点"]
 
         if user_provided_loc not in user_loc and user_loc not in user_provided_loc:
-            if user_provided_loc in ["开放大学","蟹壳云学","专技知到","文旅厅","教师"]:
+            if user_provided_loc in [
+                "开放大学",
+                "蟹壳云学",
+                "专技知到",
+                "文旅厅",
+                "教师",
+            ]:
                 return f"经查询您本平台的单位所在区域是{user_loc}，不是省直，非省直单位学时无法对接。"
             return f"经查询您本平台的单位所在区域是{user_loc}，不是{user_provided_loc}，区域不符学时无法对接，建议您先进行“单位调转”,调转到您所在的地市后，再联系您的学习培训平台，推送学时。"
         else:
-            if user_provided_loc in ["开放大学","蟹壳云学","专技知到","文旅厅","教师"]:
+            if user_provided_loc in [
+                "开放大学",
+                "蟹壳云学",
+                "专技知到",
+                "文旅厅",
+                "教师",
+            ]:
                 return "请先咨询您具体的学习培训平台，学时是否有正常推送过来，只有推送了我们才能收到，才会显示对应学时。"
             hours = CREDIT_HOURS.get(user_id_number)
             if hours is None:
@@ -412,9 +422,21 @@ class CheckUserCreditTool(BaseTool):
             if len(course_year_hours) == 0:
                 return f"经查询，平台还未接收到您在{year}年度{course_type}的学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
             total_hours = sum([x["学时"] for x in course_year_hours])
-            finished_hours = sum([x["学时"] for x in course_year_hours if x["进度"] == 100 and x["考核"] == "合格"])
-            unfinished_courses = [f"{x['课程名称']}完成了{x['进度']}%" for x in course_year_hours if x["进度"] < 100]
-            untested_courses = [x['课程名称'] for x in course_year_hours if x["考核"] == "未完成"]
+            finished_hours = sum(
+                [
+                    x["学时"]
+                    for x in course_year_hours
+                    if x["进度"] == 100 and x["考核"] == "合格"
+                ]
+            )
+            unfinished_courses = [
+                f"{x['课程名称']}完成了{x['进度']}%"
+                for x in course_year_hours
+                if x["进度"] < 100
+            ]
+            untested_courses = [
+                x["课程名称"] for x in course_year_hours if x["考核"] == "未完成"
+            ]
             unfinished_str = "  \n\n".join(unfinished_courses)
             untested_str = "  \n\n".join(untested_courses)
 
@@ -789,7 +811,7 @@ certificate_and_hours_tool = create_retrieval_tool(
     chunk_size=100,
     separators=["\n\n"],
 )
-    
+
 
 # Create Agent
 # model = Tongyi(model_name="qwen-max", model_kwargs={"temperature": 0.3})
@@ -823,11 +845,12 @@ tools = [
     other_questions_tool,
     online_learning_and_tests_tool,
     payments_tool,
-    certificate_and_hours_tool
+    certificate_and_hours_tool,
 ]
 
 # DO NOT hallucinate!!! You MUST use a tool to collect information to answer the questions!!! ALWAYS use a tool to answer a question if possible. Otherwise, you MUST ask the user for more information.
-prompt = PromptTemplate.from_template("""Your ONLY job is to use a tool to answer the following question.
+prompt = PromptTemplate.from_template(
+    """Your ONLY job is to use a tool to answer the following question.
 
 You MUST use a tool to answer the question. 
 Simply Answer "抱歉，根据我的搜索结果，我无法回答这个问题" if you don't know the answer.
@@ -855,7 +878,8 @@ Begin!
 {chat_history}
 Question: {input}
 Thought:{agent_scratchpad}
-""")
+"""
+)
 prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -877,7 +901,8 @@ main_qa_agent_executor = AgentExecutor.from_agent_and_tools(
 
 
 # check user role agent
-check_user_role_router_prompt = PromptTemplate.from_template("""Your ONLY job is to determine the user role. DO NOT Answer the question.
+check_user_role_router_prompt = PromptTemplate.from_template(
+    """Your ONLY job is to determine the user role. DO NOT Answer the question.
 
 You MUST use a tool to find out the user role.
 DO NOT hallucinate!!!!
@@ -903,7 +928,8 @@ Begin!
 Question: {input}
 Thought:{agent_scratchpad}
 user role:
-""")
+"""
+)
 check_user_role_router_prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -927,7 +953,8 @@ check_user_role_router_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 # Update user role agent
-update_user_role_prompt = PromptTemplate.from_template("""Your ONLY job is to ask the user to provide their role information regardless of the input.
+update_user_role_prompt = PromptTemplate.from_template(
+    """Your ONLY job is to ask the user to provide their role information regardless of the input.
 
 You MUST ALWAYS say: 请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。
 You MUST use a tool to update user role.
@@ -953,7 +980,8 @@ Begin!
 
 Question: {input}
 Thought:{agent_scratchpad}
-""")
+"""
+)
 update_user_role_prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -1058,7 +1086,8 @@ credit_problem_chain_executor = AgentExecutor.from_agent_and_tools(
 )
 
 # check user location
-check_user_loc_router_prompt = PromptTemplate.from_template("""Your ONLY job is to determine the user location. DO NOT Answer the question. DO NOT make prediction based on input question.
+check_user_loc_router_prompt = PromptTemplate.from_template(
+    """Your ONLY job is to determine the user location. DO NOT Answer the question. DO NOT make prediction based on input question.
 
 NO MATTER WHAT, use a tool to find out the user location.
 ALWAYS use a tool to check the user location.
@@ -1086,7 +1115,8 @@ Begin!
 Question: {input}
 Thought:{agent_scratchpad}
 user role:
-""")
+"""
+)
 check_user_loc_router_prompt.input_variables = [
     "agent_scratchpad",
     "input",
@@ -1342,7 +1372,7 @@ refund_chain_executor = AgentExecutor.from_agent_and_tools(
 # 对于没有学习的课程，您可以点击右上方【我的学习】，选择【我的订单】，找到对应课程点击【申请售后】，费用在1个工作日会原路退回。
 
 # DO NOT answer the question. Simply provide the above information.
-                                                                
+
 # Question: {input}
 
 # Answer:"""
@@ -1360,7 +1390,7 @@ refund_chain_executor = AgentExecutor.from_agent_and_tools(
 # 您要退费的课程学习了吗？
 
 # DO NOT answer the question. Simply provide the above information.
-                                                                
+
 # Question: {input}
 
 # Answer:"""
@@ -1531,7 +1561,7 @@ def check_is_credit_record_router(info):
     # if "专技个人" in info["topic"]["text"]:
     #     print("专技个人")
     #     return update_user_role_chain_executor
-    
+
     if "课程进度" in info["topic"]["text"]:
         print("课程进度")
         return course_progress_problems_llm_chain

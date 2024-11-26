@@ -106,7 +106,9 @@ class UpdateUserRoleTool(BaseTool):
         agent_executor.agent.runnable.get_prompts()[0].template = (
             """Answer the following questions as best as you can.
 
-Current user role is""" + user_role + """
+Current user role is"""
+            + user_role
+            + """
 If user role is unknown, ALWAYS ask for user role before doing ANYTHING.
 DO NOT take any actions without knowing user role.
 Possible user roles are: 专技个人，用人单位，主管部门，继续教育机构
@@ -141,7 +143,7 @@ Thought:{agent_scratchpad}
         )
         # print(agent_executor.memory.chat_memory.messages)
         # original_question = agent_executor.memory.chat_memory.messages[-2].content
-        
+
         return "更新您的用户角色为" + user_role
         # return agent_executor.invoke({"input": original_question})["output"]
         # print(type(params))
@@ -158,6 +160,7 @@ class AskForUserRoleTool(BaseTool):
     # def _run(self, a: int, b: int, run_manager: Optional[CallbackManagerForToolRun] = None) -> Any:
     def _run(self, params) -> Any:
         return "请问您是专技个人、用人单位、主管部门，还是继续教育机构？请先确认您的用户类型，以便我能为您提供相应的信息。"
+
 
 def create_retrieval_tool(
     markdown_path,
@@ -221,6 +224,7 @@ def create_retrieval_tool(
         return registration_tool, retriever
     return registration_tool
 
+
 # create registration retrievers
 registration_tool = create_retrieval_tool(
     "/Users/yongxinw/Developer/llamaindex-chat-with-streamlit-docs/policies/registration/registration.md",
@@ -271,7 +275,7 @@ login_problems_tool = create_retrieval_tool(
     "回答用户登录问题的相关问题，返回最相关的文档，如：登录不了、无法登录、怎么登录不上",
     search_kwargs={"k": 1},
     chunk_size=100,
-    separators=["\n\n"]
+    separators=["\n\n"],
 )
 
 login_problems_detail_tool = create_retrieval_tool(
@@ -280,7 +284,7 @@ login_problems_detail_tool = create_retrieval_tool(
     "回答用户登录问题的细节相关问题，返回最相关的文档，如：没有滑块，找不到滑块，登录为什么提示验证失败，哪里有滑块，密码错误，忘记密码，账号不存在，登录显示审核中",
     search_kwargs={"k": 1},
     chunk_size=100,
-    separators=["\n\n"]
+    separators=["\n\n"],
 )
 
 forgot_password_tool = create_retrieval_tool(
@@ -299,7 +303,7 @@ study_hour_tool = create_retrieval_tool(
     "回答学时、学时申报相关问题，返回最相关的文档，如：怎么学时申报，如何提交学时，为什么不能学时申报，学时申报如何审核、驳回，学时申报错了怎么办，用人单位提交培训计划如何审核、怎么申报学时",
     # search_kwargs={"k": 1},
     chunk_size=100,
-    separators=["\n\n"]
+    separators=["\n\n"],
 )
 
 # Create Agent
