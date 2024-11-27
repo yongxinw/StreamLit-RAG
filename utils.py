@@ -140,10 +140,10 @@ def merge_results(inp):
         qa_map = json.load(f)
 
     print(results)
-    question_list = [res.strip() for res in results.split("\n") if len(res.strip()) > 0]
+    question_list = results
     print("length of the answer: ", len(question_list))
     print(question_list)
-    merged_answers = "\n\n".join([qa_map[q] for q in question_list])
+    merged_answers = "\n\n".join([qa_map[q.page_content] for q in question_list])
     print(merged_answers)
     print("input: ", RunnablePassthrough())
     return {
