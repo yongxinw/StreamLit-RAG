@@ -158,7 +158,11 @@ class UpdateUserLocTool2(BaseTool):
                 + LOC_STR
             )
         user_location = params_dict["user_location"]
-        credit_problem_chain_executor.agent.runnable.get_prompts()[0].template.replace(
+        credit_problem_chain_executor.agent.runnable.get_prompts()[
+            0
+        ].template = credit_problem_chain_executor.agent.runnable.get_prompts()[
+            0
+        ].template.replace(
             "user location: unknown", f"user location: {user_location}"
         )
         return f"谢谢，已为您更新您的学习地市为{user_location}, 现在请您提供身份证号码，以便我查询您的学时状态。"
@@ -199,7 +203,11 @@ class UpdateUserRoleTool2(BaseTool):
         user_role = params_dict["user_role"]
         if user_role == "跳过":
             user_role = "专技个人"
-        main_qa_agent_executor.agent.runnable.get_prompts()[0].template.replace(
+        main_qa_agent_executor.agent.runnable.get_prompts()[
+            0
+        ].template = main_qa_agent_executor.agent.runnable.get_prompts()[
+            0
+        ].template.replace(
             "Current user role is unknown", f"Current user role is: {user_role}"
         )
         return f"更新您的用户角色为{user_role}, 请问有什么可以帮到您？"
@@ -375,6 +383,8 @@ def check_role_qa_router(info):
         return cont_edu_qa_agent_executor_v2
     print("默认进入专技个人")
     return individual_qa_agent_executor_v2
+
+
 # ===========================================================================
 #  END: MainChain - Check user router
 # ===========================================================================
@@ -450,6 +460,7 @@ def login_problem_router(info):
         return login_problem_ask_user_executor
 
     return login_problem_ask_user_executor
+
 
 login_problem_chain = {
     "topic": login_problem_classifier_chain,
