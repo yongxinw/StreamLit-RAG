@@ -55,13 +55,15 @@ def _init():
             {
                 "role": "assistant",
                 "content": f"""欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。
-                测试请使用身份证号372323199509260348。测试公需课/专业课学时，请使用年份2019/2020。
-                测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。测试模拟数据如下：\n\n
-                {SIM_DATA}
+                请选择您的用户身份，输入：专技个人、用人单位、主管部门 或 继续教育机构。
         """,
             }  # TODO: ask user type here?
         ]
 
+# Deprecated welcome message. Keep here for testing.
+# 测试请使用身份证号372323199509260348。测试公需课 / 专业课学时，请使用年份2019 / 2020。
+# 测试课程购买，退款等，请使用年份2023，课程名称新闻专业课培训班。测试模拟数据如下：\n\n
+# {SIM_DATA}
 
 _init()
 
@@ -210,6 +212,9 @@ class UpdateUserRoleTool2(BaseTool):
         ].template.replace(
             "Current user role is unknown", f"Current user role is: {user_role}"
         )
+        # Don't save topic when updating user role. In the case user set their role in the beginning,
+        # this allows the user to go to other chains other than qa_v2 chain.
+        st.session_state.topic = None
         return f"更新您的用户角色为{user_role}, 请问有什么可以帮到您？"
 
 
@@ -365,6 +370,7 @@ update_user_role_agent = create_atomic_retriever_agent(
 
 
 def check_role_qa_router(info):
+    # pdb.set_trace()
     print(info["topic"])
     if "unknown" in info["topic"]["output"].lower():
         print("check role entering unknown")
@@ -775,6 +781,7 @@ qa_chain_v2 = {
 
 def main_question_classifier_and_route(info):
     print(info)
+    # pdb.set_trace()
     if st.session_state.topic is None:
         st.session_state.topic = info["topic"]["text"]
     else:
