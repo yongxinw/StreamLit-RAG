@@ -6,7 +6,7 @@ import requests
 from req_utils import generate_signature
 from utils import check_user_location
 import re
-from statics import COURSE_PURCHASES, CREDIT_HOURS, REGISTRATION_STATUS
+from statics import COURSE_PURCHASES, CREDIT_HOURS, REGISTRATION_STATUS, URL
 
 
 def get_registration_status_api(params: Dict[str, str]) -> str:
@@ -16,7 +16,7 @@ def get_registration_status_api(params: Dict[str, str]) -> str:
     Args:
         params (dict):
             params是一个dictionary，其中需要有"user_id_number"关键词，
-            代表用户身份证号。测试使用：{"user_id_number": "350102199403071313"}
+            代表用户身份证号。测试使用：{"user_id_number": "532503198507103147"}
     Returns:
         str: 用户在大众云学平台上的注册状态，如：
 
@@ -34,11 +34,10 @@ def get_registration_status_api(params: Dict[str, str]) -> str:
         如果查询失败，则返回：
         '查询失败，请稍后再试'
     """
-    url = "http://120.41.168.136:8600/customer/api/mgm/get-register-status-list"
+    url = f"http://{URL}:8600/customer/api/mgm/get-register-status-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
-    # print(signature)
 
     params = {
         "secret": signature,
@@ -187,7 +186,7 @@ def check_credit_hours_api(
                 user_id_number: 代表用户身份证号，测试使用："350581199412080534"
                 year: 代表年份，测试使用："2021"
                 course_type: 代表课程类型，如："公需课"或者"专业课"
-            如：{"user_id_number": "350581199412080534", "year": "2021", "course_type": "公需课"}
+            如：{"泰安", "user_id_number": "350581199412080534", "year": "2021", "course_type": "公需课"}
     Returns:
         str: 用户在大众云学平台上的学时情况
     """
@@ -237,7 +236,7 @@ def _get_user_location_by_id_number(user_id_number: str) -> Optional[str]:
     Returns:
         str: 用户所在地
     """
-    url = "http://120.41.168.136:8600/customer/api/mgm/get-professional-person-list"
+    url = f"http://{URL}:8600/customer/api/mgm/get-professional-person-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -274,7 +273,7 @@ def _get_credit_hours_by_id_number(
     if credit_id is None:
         # Failed to retrieve credit id
         return "经查询，平台还未接收到您的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-    url = "http://120.41.168.136:8600/customer/api/mgm/get-staff-report-by-id"
+    url = f"http://{URL}:8600/customer/api/mgm/get-staff-report-by-id"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -324,7 +323,7 @@ def _get_credit_id_by_id_number(user_id_number: str) -> Optional[str]:
     Returns:
         dict: 用户学时信息
     """
-    url = "http://120.41.168.136:8600/customer/api/mgm/get-professional-person-list"
+    url = f"http://{URL}:8600/customer/api/mgm/get-professional-person-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -394,7 +393,7 @@ def check_course_purchases_api(params_dict: Dict[str, str]) -> str:
 
     course_name = params_dict["course_name"]
 
-    url = "http://120.41.168.136:8600/customer/api/train/get-general-info-list"
+    url = f"http://{URL}:8600/customer/api/train/get-general-info-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -472,7 +471,7 @@ def check_course_refund_api(params_dict: Dict[str, str]) -> str:
 
     course_name = params_dict["course_name"]
 
-    url = "http://120.41.168.136:8600/customer/api/train/get-general-info-list"
+    url = f"http://{URL}:8600/customer/api/train/get-general-info-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)

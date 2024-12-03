@@ -57,8 +57,9 @@ def _init():
                 "content": f"""欢迎您来到大众云学，我是大众云学的专家助手，我可以回答关于大众云学的所有问题。
                 请选择您的用户身份，输入：专技个人、用人单位、主管部门 或 继续教育机构。
         """,
-            }  # TODO: ask user type here?
+            }
         ]
+
 
 # Deprecated welcome message. Keep here for testing.
 # 测试请使用身份证号372323199509260348。测试公需课 / 专业课学时，请使用年份2019 / 2020。
