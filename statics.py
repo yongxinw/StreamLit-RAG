@@ -2,7 +2,8 @@ DASHSCOPE_API_KEY = "sk-91ee79b5f5cd4838a3f1747b4ff0e850"
 
 # "qwen-max"， "qwen-plus", "qwen-turbo"
 LLM_NAME = "qwen-max"
-URL = "120.41.169.135"
+# URL = "120.41.169.135:8600"
+URL = "customer-test.treewises.com"
 
 REGISTRATION_STATUS = {
     "372323199509260348": {

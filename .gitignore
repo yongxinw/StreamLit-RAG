@@ -5,3 +5,5 @@ req.py
 .idea/
 vector_store/
 *.faiss
+grab_imports.py
+*.pyc

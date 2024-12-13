@@ -34,7 +34,7 @@ def get_registration_status_api(params: Dict[str, str]) -> str:
         如果查询失败，则返回：
         '查询失败，请稍后再试'
     """
-    url = f"http://{URL}:8600/customer/api/mgm/get-register-status-list"
+    url = f"http://{URL}/customer/api/mgm/get-register-status-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -50,6 +50,9 @@ def get_registration_status_api(params: Dict[str, str]) -> str:
 
     if response.status_code == 200:
         data = response.json()["data"]
+        if data is None:
+            print("[ALERT] None Type returned from API")
+            return f"很抱歉，根据您提供的身份证号码，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
         if len(data) == 0:
             return f"很抱歉，根据您提供的身份证号码，我没有找到任何注册信息，请确认您提供了正确的信息并重试"
         status = {
@@ -236,7 +239,7 @@ def _get_user_location_by_id_number(user_id_number: str) -> Optional[str]:
     Returns:
         str: 用户所在地
     """
-    url = f"http://{URL}:8600/customer/api/mgm/get-professional-person-list"
+    url = f"http://{URL}/customer/api/mgm/get-professional-person-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -273,7 +276,7 @@ def _get_credit_hours_by_id_number(
     if credit_id is None:
         # Failed to retrieve credit id
         return "经查询，平台还未接收到您的任何学时信息，建议您先咨询您的学习培训平台，学时是否全部推送，如果已确定有推送，请您24小时及时查看对接情况；每年7月至9月，因学时对接数据较大，此阶段建议1-3天及时关注。"
-    url = f"http://{URL}:8600/customer/api/mgm/get-staff-report-by-id"
+    url = f"http://{URL}/customer/api/mgm/get-staff-report-by-id"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -323,7 +326,7 @@ def _get_credit_id_by_id_number(user_id_number: str) -> Optional[str]:
     Returns:
         dict: 用户学时信息
     """
-    url = f"http://{URL}:8600/customer/api/mgm/get-professional-person-list"
+    url = f"http://{URL}/customer/api/mgm/get-professional-person-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -393,7 +396,7 @@ def check_course_purchases_api(params_dict: Dict[str, str]) -> str:
 
     course_name = params_dict["course_name"]
 
-    url = f"http://{URL}:8600/customer/api/train/get-general-info-list"
+    url = f"http://{URL}/customer/api/train/get-general-info-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
@@ -471,7 +474,7 @@ def check_course_refund_api(params_dict: Dict[str, str]) -> str:
 
     course_name = params_dict["course_name"]
 
-    url = f"http://{URL}:8600/customer/api/train/get-general-info-list"
+    url = f"http://{URL}/customer/api/train/get-general-info-list"
     secret_key = "123456"
     timestamp = str(int(time.time() * 1000))
     signature = generate_signature(timestamp, secret_key)
