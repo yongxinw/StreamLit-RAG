@@ -16,7 +16,7 @@ def get_registration_status_api(params: Dict[str, str]) -> str:
     Args:
         params (dict):
             params是一个dictionary，其中需要有"user_id_number"关键词，
-            代表用户身份证号。测试使用：{"user_id_number": "532503198507103147"}
+            代表用户身份证号。测试使用：{"user_id_number": "150624196607198652"}
     Returns:
         str: 用户在大众云学平台上的注册状态，如：
 
@@ -42,7 +42,7 @@ def get_registration_status_api(params: Dict[str, str]) -> str:
     params = {
         "secret": signature,
         "timestamp": timestamp,
-        "platformId": "6003",
+        "platformId": "6002",
         "idNumber": str(params["user_id_number"]),
     }
 
